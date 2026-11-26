@@ -60,10 +60,16 @@
             <label class="block text-xs font-semibold text-slate-600 mb-1.5">시작 월</label>
             <select id="startMonth" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
           </div>
-          <!-- 종료 월 -->
+          <!-- 종료 월 + 기간 선택 버튼 -->
           <div>
             <label class="block text-xs font-semibold text-slate-600 mb-1.5">종료 월</label>
             <select id="endMonth" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
+            <div class="flex gap-1 mt-1.5">
+              <button type="button" data-years="5" class="period-btn flex-1 text-[11px] py-0.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-600">최근5년</button>
+              <button type="button" data-years="10" class="period-btn flex-1 text-[11px] py-0.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-600">10년</button>
+              <button type="button" data-years="20" class="period-btn flex-1 text-[11px] py-0.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-600">20년</button>
+              <button type="button" data-years="30" class="period-btn flex-1 text-[11px] py-0.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-600">30년</button>
+            </div>
           </div>
           <!-- 월 적립 금액 -->
           <div>
@@ -82,12 +88,6 @@
             <label class="block text-xs font-semibold text-slate-600 mb-1.5">적금 연이율 (%, 매년 연복리)</label>
             <input type="number" id="savingsRate" value="3.5" min="0" max="20" step="0.1"
               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <div class="flex gap-1 mt-1.5">
-              <button type="button" data-years="5" class="period-btn flex-1 text-[11px] py-0.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-600">최근5년</button>
-              <button type="button" data-years="10" class="period-btn flex-1 text-[11px] py-0.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-600">10년</button>
-              <button type="button" data-years="20" class="period-btn flex-1 text-[11px] py-0.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-600">20년</button>
-              <button type="button" data-years="30" class="period-btn flex-1 text-[11px] py-0.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-600">30년</button>
-            </div>
           </div>
         </div>
 
@@ -121,7 +121,7 @@
           <!-- 환율 효과 분리 -->
           <label class="inline-flex items-center gap-2 cursor-pointer select-none">
             <input type="checkbox" id="toggleFxSplit" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" />
-            <span class="text-xs font-medium text-slate-700">환율 효과 분리 보기</span>
+            <span class="text-xs font-medium text-slate-700">환율 기여도 보기</span>
           </label>
 
           <!-- 로그 스케일 -->
@@ -169,7 +169,7 @@
       <footer class="text-[11px] text-slate-400 leading-relaxed space-y-1 pb-6">
         <p>※ QQQ(1999-03 이전)는 나스닥100(^NDX) 수익률로 역산 연결되었으며, SGOV(2020-06 이전)는 주가 $100 고정 및 미국 3개월 국채 금리(^IRX) 월 분배금 재투자로 계산되었습니다.</p>
         <p>※ QYLD, TSLA, NVDA, GOOGL, AMZN, 금, 은, 비트코인은 데이터가 존재하는 상장/제공 월부터 적립을 시작합니다. 배당(분배금)은 수령 시 즉시 재투자(세후 모드 시 15.4% 차감 후 재투자)되며, 해외주식 양도소득세는 최종 일괄 매도 기준 250만 원 공제 후 22%가 적용됩니다.</p>
-        <p>※ 환전 수수료는 0%로 가정합니다. 금융소득종합과세(연 이자·배당 2,000만 원 초과)는 개인별 소득 구간에 따라 다르므로 본 시뮬레이션에서 제외되었습니다.</p>
+        <p>※ 연평균 수익률은 매월 적립 현금흐름을 반영한 연환산 내부수익률(IRR) 기준입니다. 환전 수수료는 0%로 가정하며, 금융소득종합과세(연 이자·배당 2,000만 원 초과)는 개인별 소득 구간에 따라 다르므로 제외되었습니다.</p>
       </footer>
     </div>
   </div>
@@ -180,9 +180,9 @@ const ASSET_CONFIGS = [
   { id: 'USD',     name: '단순 달러',         type: 'usd',     color: '#0ea5e9', defaultOn: true,  taxDesc: '비과세 0%' },
   { id: 'SGOV',    name: 'SGOV (미단기채)',   type: 'us_etf',  color: '#14b8a6', defaultOn: true,  taxDesc: '배당 15.4% + 양도 22%' },
   { id: 'SPY',     name: 'S&P 500 (SPY)',     type: 'us_etf',  color: '#2563eb', defaultOn: true,  taxDesc: '배당 15.4% + 양도 22%' },
-  { id: 'QQQ',     name: 'QQQ (나스닥100)',   type: 'us_etf',  color: '#7c3aed', defaultOn: true,  taxDesc: '배당 15.4% + 양도 22%' },
   { id: 'AAPL',    name: '애플 (AAPL)',       type: 'us_etf',  color: '#111827', defaultOn: true,  taxDesc: '배당 15.4% + 양도 22%' },
-  { id: 'KO',      name: '코카콜라 (KO)',     type: 'us_etf',  color: '#dc2626', defaultOn: true,  taxDesc: '배당 15.4% + 양도 22%' },
+  { id: 'QQQ',     name: 'QQQ (나스닥100)',   type: 'us_etf',  color: '#7c3aed', defaultOn: false, taxDesc: '배당 15.4% + 양도 22%' },
+  { id: 'KO',      name: '코카콜라 (KO)',     type: 'us_etf',  color: '#dc2626', defaultOn: false, taxDesc: '배당 15.4% + 양도 22%' },
   { id: 'QYLD',    name: 'QYLD (커버드콜)',   type: 'us_etf',  color: '#db2777', defaultOn: false, taxDesc: '배당 15.4% + 양도 22%' },
   { id: 'TSLA',    name: '테슬라 (TSLA)',     type: 'us_etf',  color: '#e11d48', defaultOn: false, taxDesc: '양도 22% (250만 공제)' },
   { id: 'NVDA',    name: '엔비디아 (NVDA)',   type: 'us_etf',  color: '#16a34a', defaultOn: false, taxDesc: '배당 15.4% + 양도 22%' },
@@ -190,8 +190,7 @@ const ASSET_CONFIGS = [
   { id: 'AMZN',    name: '아마존 (AMZN)',     type: 'us_etf',  color: '#ea580c', defaultOn: false, taxDesc: '양도 22% (250만 공제)' },
   { id: 'GOLD',    name: '금 (국제시세×환율)', type: 'gold',    color: '#ca8a04', defaultOn: false, taxDesc: 'KRX현물 기준 0%' },
   { id: 'SILVER',  name: '은 (국제시세×환율)', type: 'silver',  color: '#94a3b8', defaultOn: false, taxDesc: '국내ETF 기준 15.4%' },
-  { id: 'BTC_USD', name: '비트코인 (달러)',   type: 'btc_usd', color: '#f59e0b', defaultOn: false, taxDesc: '유예 기준 0%' },
-  { id: 'BTC_KRW', name: '비트코인 (한화)',   type: 'btc_krw', color: '#d97706', defaultOn: false, taxDesc: '유예 기준 0%' },
+  { id: 'BTC_KRW', name: '비트코인',          type: 'btc_krw', color: '#f59e0b', defaultOn: false, taxDesc: '유예 기준 0%' },
 ];
 
 let rawRecords = [];
@@ -211,10 +210,41 @@ const fmtKRWShort = (n) => {
 };
 const fmtPct = (n) => (n >= 0 ? '+' : '') + n.toFixed(1) + '%';
 
+// 적립식 연평균 수익률 (월별 현금흐름 기준 연환산 IRR)
+function computeAnnualizedIRR(deposits, finalVal) {
+  const m = deposits.length;
+  if (m === 0) return 0;
+  const totalIn = deposits.reduce((s, v) => s + v, 0);
+  if (totalIn <= 0) return 0;
+  if (finalVal <= 0) return -100;
+  if (Math.abs(finalVal - totalIn) < 1e-6) return 0;
+
+  const evalF = (rm) => {
+    let sum = 0;
+    const base = 1 + rm;
+    for (let k = 0; k < m; k++) {
+      sum += deposits[k] * Math.pow(base, m - k);
+    }
+    return sum - finalVal;
+  };
+
+  let lo = -0.95;
+  let hi = 0.5;
+  while (evalF(hi) < 0 && hi < 100) hi *= 2;
+  if (evalF(lo) > 0) return -99.9;
+
+  for (let iter = 0; iter < 60; iter++) {
+    const mid = (lo + hi) / 2;
+    if (evalF(mid) > 0) hi = mid;
+    else lo = mid;
+  }
+  const rm = (lo + hi) / 2;
+  return (Math.pow(1 + rm, 12) - 1) * 100;
+}
+
 // 프록시 연결 전처리 (QQQ -> ^NDX 역산, SGOV -> ^IRX 월분배금)
 function preprocessData(data) {
   const arr = JSON.parse(JSON.stringify(data));
-  // QQQ 첫 상장 시점 찾기
   const firstQqqIdx = arr.findIndex(r => r.QQQ && r.QQQ.p != null && r.QQQ.proxy_ndx != null);
   if (firstQqqIdx > 0) {
     const baseQqqP = arr[firstQqqIdx].QQQ.p;
@@ -226,7 +256,6 @@ function preprocessData(data) {
       }
     }
   }
-  // SGOV 상장 전 구간 처리 ($100 고정 + ^IRX 연이율/12 분배)
   for (let i = 0; i < arr.length; i++) {
     if (arr[i].SGOV && arr[i].SGOV.p == null) {
       const irx = arr[i].SGOV.proxy_irx != null ? arr[i].SGOV.proxy_irx : 0;
@@ -243,6 +272,7 @@ function simulateAsset(asset, slice, monthlyAmt, savingsRatePct, afterTax, realP
   const n = slice.length;
   const endCpi = slice[n - 1].cpi || 100;
   const series = new Array(n).fill(null);
+  const depositFlows = [];
 
   let principalKrw = 0;
   let realPrincipalKrw = 0;
@@ -276,13 +306,14 @@ function simulateAsset(asset, slice, monthlyAmt, savingsRatePct, afterTax, realP
       const row = slice[i];
       if (!firstInvestYm) firstInvestYm = row.ym;
       monthsInvested++;
+      const realDep = monthlyAmt * (endCpi / (row.cpi || endCpi));
       principalKrw += monthlyAmt;
-      realPrincipalKrw += monthlyAmt * (endCpi / (row.cpi || endCpi));
+      realPrincipalKrw += realDep;
+      depositFlows.push(realPower ? realDep : monthlyAmt);
 
       mInYear++;
       yearDeposits += monthlyAmt;
 
-      // 현재 월 기준 발생 이자(연복리 정산 전 추정치 포함)
       const accruedInterest = base * r * (mInYear / 12) + monthlyAmt * r * (mInYear * (mInYear + 1) / 2) / 12;
       const accruedTax = afterTax ? accruedInterest * 0.154 : 0;
       const curVal = base + yearDeposits + accruedInterest - accruedTax;
@@ -291,7 +322,6 @@ function simulateAsset(asset, slice, monthlyAmt, savingsRatePct, afterTax, realP
       series[i] = curVal * cpiFactor;
       updateRiskStats(curVal, principalKrw);
 
-      // 12개월 만기 또는 마지막 달 정산
       if (mInYear === 12 || i === n - 1) {
         totalTaxKrw += accruedTax;
         base = curVal;
@@ -303,6 +333,7 @@ function simulateAsset(asset, slice, monthlyAmt, savingsRatePct, afterTax, realP
     const finalVal = base;
     const basePrincipal = realPower ? realPrincipalKrw : principalKrw;
     const returnPct = basePrincipal > 0 ? ((finalVal - basePrincipal) / basePrincipal) * 100 : 0;
+    const cagrPct = computeAnnualizedIRR(depositFlows, finalVal);
 
     return {
       asset,
@@ -312,9 +343,9 @@ function simulateAsset(asset, slice, monthlyAmt, savingsRatePct, afterTax, realP
       realPrincipalKrw,
       finalVal,
       returnPct,
+      cagrPct,
       totalTaxKrw,
       taxDetail: afterTax ? `이자세 ${fmtKRW(totalTaxKrw)}` : '-',
-      usdReturnPct: null,
       fxReturnPct: null,
       mddPct: maxDrawdown * 100,
       underwaterMonths,
@@ -328,8 +359,11 @@ function simulateAsset(asset, slice, monthlyAmt, savingsRatePct, afterTax, realP
       const row = slice[i];
       if (!firstInvestYm) firstInvestYm = row.ym;
       monthsInvested++;
+      const realDep = monthlyAmt * (endCpi / (row.cpi || endCpi));
       principalKrw += monthlyAmt;
-      realPrincipalKrw += monthlyAmt * (endCpi / (row.cpi || endCpi));
+      realPrincipalKrw += realDep;
+      depositFlows.push(realPower ? realDep : monthlyAmt);
+
       const boughtUsd = monthlyAmt / row.fx;
       totalUsd += boughtUsd;
       principalUsd += boughtUsd;
@@ -343,6 +377,7 @@ function simulateAsset(asset, slice, monthlyAmt, savingsRatePct, afterTax, realP
     const finalVal = totalUsd * lastFx;
     const basePrincipal = realPower ? realPrincipalKrw : principalKrw;
     const returnPct = basePrincipal > 0 ? ((finalVal - basePrincipal) / basePrincipal) * 100 : 0;
+    const cagrPct = computeAnnualizedIRR(depositFlows, finalVal);
     const avgFx = principalUsd > 0 ? principalKrw / principalUsd : lastFx;
     const fxReturnPct = ((lastFx - avgFx) / avgFx) * 100;
 
@@ -354,9 +389,9 @@ function simulateAsset(asset, slice, monthlyAmt, savingsRatePct, afterTax, realP
       realPrincipalKrw,
       finalVal,
       returnPct,
+      cagrPct,
       totalTaxKrw: 0,
       taxDetail: '비과세 (0%)',
-      usdReturnPct: 0,
       fxReturnPct,
       mddPct: maxDrawdown * 100,
       underwaterMonths,
@@ -376,8 +411,11 @@ function simulateAsset(asset, slice, monthlyAmt, savingsRatePct, afterTax, realP
       }
       if (!firstInvestYm) firstInvestYm = row.ym;
       monthsInvested++;
+      const realDep = monthlyAmt * (endCpi / (row.cpi || endCpi));
       principalKrw += monthlyAmt;
-      realPrincipalKrw += monthlyAmt * (endCpi / (row.cpi || endCpi));
+      realPrincipalKrw += realDep;
+      depositFlows.push(realPower ? realDep : monthlyAmt);
+
       shares += monthlyAmt / item.p;
       lastValidPrice = item.p;
 
@@ -389,6 +427,7 @@ function simulateAsset(asset, slice, monthlyAmt, savingsRatePct, afterTax, realP
     const finalVal = shares * lastValidPrice;
     const basePrincipal = realPower ? realPrincipalKrw : principalKrw;
     const returnPct = basePrincipal > 0 ? ((finalVal - basePrincipal) / basePrincipal) * 100 : 0;
+    const cagrPct = computeAnnualizedIRR(depositFlows, finalVal);
 
     return {
       asset,
@@ -398,9 +437,9 @@ function simulateAsset(asset, slice, monthlyAmt, savingsRatePct, afterTax, realP
       realPrincipalKrw,
       finalVal,
       returnPct,
+      cagrPct,
       totalTaxKrw: 0,
       taxDetail: '비과세 (0%)',
-      usdReturnPct: null,
       fxReturnPct: null,
       mddPct: maxDrawdown * 100,
       underwaterMonths,
@@ -408,7 +447,7 @@ function simulateAsset(asset, slice, monthlyAmt, savingsRatePct, afterTax, realP
     };
   }
 
-  // 달러 기반 자산: us_etf, gold, silver, btc_usd
+  // 달러 기반 자산: us_etf, gold, silver
   let shares = 0;
   let costBasisKrw = 0;
   let lastValidPrice = 0;
@@ -426,7 +465,6 @@ function simulateAsset(asset, slice, monthlyAmt, savingsRatePct, afterTax, realP
     const p = item.p;
     const d = item.d || 0;
 
-    // 1) 기존 보유 수량에 대한 배당(분배금) 수령 및 재투자
     if (shares > 0 && d > 0) {
       const grossDivUsd = shares * d;
       const taxUsd = afterTax ? grossDivUsd * 0.154 : 0;
@@ -435,14 +473,15 @@ function simulateAsset(asset, slice, monthlyAmt, savingsRatePct, afterTax, realP
         divTaxKrw += taxUsd * fx;
       }
       shares += netDivUsd / p;
-      // 세후 재투자 원금을 취득가액에 합산 (이중과세 방지)
       costBasisKrw += netDivUsd * fx;
     }
 
-    // 2) 매월 적립 매수
     monthsInvested++;
+    const realDep = monthlyAmt * (endCpi / (row.cpi || endCpi));
     principalKrw += monthlyAmt;
-    realPrincipalKrw += monthlyAmt * (endCpi / (row.cpi || endCpi));
+    realPrincipalKrw += realDep;
+    depositFlows.push(realPower ? realDep : monthlyAmt);
+
     const investUsd = monthlyAmt / fx;
     principalUsd += investUsd;
     shares += investUsd / p;
@@ -470,17 +509,14 @@ function simulateAsset(asset, slice, monthlyAmt, savingsRatePct, afterTax, realP
 
   totalTaxKrw = divTaxKrw + capTaxKrw;
   const finalVal = grossValKrw - capTaxKrw;
-  // 마지막 포인트에 세후 매도 금액 반영
   if (monthsInvested > 0) {
     series[n - 1] = finalVal;
   }
 
   const basePrincipal = realPower ? realPrincipalKrw : principalKrw;
   const returnPct = basePrincipal > 0 ? ((finalVal - basePrincipal) / basePrincipal) * 100 : 0;
+  const cagrPct = computeAnnualizedIRR(depositFlows, finalVal);
 
-  // 환율 효과 분리 (원화 총수익률 = (1 + 달러자산수익률) * (1 + 환율수익률) - 1)
-  const finalValUsdAfterCapTax = lastValidFx > 0 ? finalVal / lastValidFx : 0;
-  const usdReturnPct = principalUsd > 0 ? ((finalValUsdAfterCapTax - principalUsd) / principalUsd) * 100 : 0;
   const avgFx = principalUsd > 0 ? principalKrw / principalUsd : lastValidFx;
   const fxReturnPct = avgFx > 0 ? ((lastValidFx - avgFx) / avgFx) * 100 : 0;
 
@@ -503,9 +539,9 @@ function simulateAsset(asset, slice, monthlyAmt, savingsRatePct, afterTax, realP
     realPrincipalKrw,
     finalVal,
     returnPct,
+    cagrPct,
     totalTaxKrw,
     taxDetail,
-    usdReturnPct,
     fxReturnPct,
     mddPct: maxDrawdown * 100,
     underwaterMonths,
@@ -572,14 +608,18 @@ function runSimulation() {
   const n = slice.length;
   const endCpi = slice[n - 1].cpi || 100;
 
-  // 원금 기준선 시리즈
+  // 원금 기준선 시리즈 및 연평균 수익률
   let cumNom = 0;
   let cumReal = 0;
+  const principalFlows = [];
   const principalSeries = slice.map(row => {
+    const realDep = monthlyAmt * (endCpi / (row.cpi || endCpi));
     cumNom += monthlyAmt;
-    cumReal += monthlyAmt * (endCpi / (row.cpi || endCpi));
+    cumReal += realDep;
+    principalFlows.push(realPower ? realDep : monthlyAmt);
     return realPower ? cumReal : cumNom;
   });
+  const principalCagr = realPower ? computeAnnualizedIRR(principalFlows, cumNom) : 0;
 
   // 선택 자산 시뮬레이션
   const activeConfigs = ASSET_CONFIGS.filter(a => selectedAssets.has(a.id));
@@ -610,7 +650,7 @@ function runSimulation() {
     <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
       <p class="text-xs text-slate-500">최고 성과 항목 (${isAfterTax ? '세후' : '세전'})</p>
       <p class="text-lg font-bold text-blue-600 mt-1">${best ? best.asset.name : '-'}</p>
-      <p class="text-[11px] text-slate-500 mt-0.5">${best ? fmtKRW(best.finalVal) + ' (' + fmtPct(best.returnPct) + ')' : ''}</p>
+      <p class="text-[11px] text-slate-500 mt-0.5">${best ? fmtKRW(best.finalVal) + ' (연 ' + fmtPct(best.cagrPct) + ')' : ''}</p>
     </div>
     <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
       <p class="text-xs text-slate-500">기간 내 원/달러 환율</p>
@@ -684,38 +724,38 @@ function runSimulation() {
 
   // 테이블 헤더
   document.getElementById('tableNote').textContent = realPower
-    ? '실질 구매력 모드: 과거 투입 원금을 종료 시점 물가(CPI) 가치로 환산해 실질 수익률을 산출했습니다.'
-    : '명목 금액 기준: 실제 매월 투입된 원화 원금 대비 최종 평가액 및 수익률입니다.';
+    ? '실질 구매력 모드: 과거 투입 원금을 종료 시점 물가(CPI) 가치로 환산해 실질 수익률과 연평균 수익률을 산출했습니다.'
+    : '명목 금액 기준: 실제 매월 투입된 원화 원금 대비 최종 평가액, 누적 수익률 및 연평균 수익률(IRR)입니다.';
 
   const headerCols = [
     '항목',
-    '투자 기간',
     realPower ? '실질 원금' : '투입 원금',
     `최종 금액 (${isAfterTax ? '세후' : '세전'})`,
     realPower ? '실질 수익률' : '최종 수익률',
+    '연평균 수익률',
     ...(isAfterTax ? ['적용 세율 / 총 납부 세금'] : []),
-    ...(fxSplit ? ['자산 수익률(USD)', '환율 기여도'] : []),
+    ...(fxSplit ? ['환율 기여도'] : []),
     '최대 낙폭(MDD)',
     '원금손실 기간'
   ];
   document.getElementById('tableHeaderRow').innerHTML = headerCols
-    .map((c, idx) => `<th class="px-4 py-3 font-semibold ${idx >= 2 ? 'text-right' : ''}">${c}</th>`)
+    .map((c, idx) => `<th class="px-4 py-3 font-semibold ${idx >= 1 ? 'text-right' : ''}">${c}</th>`)
     .join('');
 
   // 테이블 바디 (원금 행 + 각 자산 행)
   const tbody = document.getElementById('resultTableBody');
   let html = `
     <tr class="bg-slate-50/70 font-medium text-slate-600">
-      <td class="px-4 py-3 flex items-center gap-2">
+      <td class="px-4 py-3 flex items-center gap-2 whitespace-nowrap">
         <span class="w-2.5 h-2.5 rounded-full bg-slate-400 inline-block"></span>
         <span>원금 기준선</span>
       </td>
-      <td class="px-4 py-3 text-xs">${slice[0].ym} (${n}개월)</td>
-      <td class="px-4 py-3 text-right">${fmtKRW(realPower ? cumReal : cumNom)}</td>
-      <td class="px-4 py-3 text-right">${fmtKRW(cumNom)}</td>
-      <td class="px-4 py-3 text-right">${realPower ? fmtPct(((cumNom - cumReal) / cumReal) * 100) : '0.0%'}</td>
+      <td class="px-4 py-3 text-right whitespace-nowrap">${fmtKRW(realPower ? cumReal : cumNom)}</td>
+      <td class="px-4 py-3 text-right whitespace-nowrap">${fmtKRW(cumNom)}</td>
+      <td class="px-4 py-3 text-right whitespace-nowrap">${realPower ? fmtPct(((cumNom - cumReal) / cumReal) * 100) : '0.0%'}</td>
+      <td class="px-4 py-3 text-right whitespace-nowrap">${realPower ? fmtPct(principalCagr) : '0.0%'}</td>
       ${isAfterTax ? '<td class="px-4 py-3 text-right text-xs text-slate-400">비과세</td>' : ''}
-      ${fxSplit ? '<td class="px-4 py-3 text-right text-xs text-slate-400">-</td><td class="px-4 py-3 text-right text-xs text-slate-400">-</td>' : ''}
+      ${fxSplit ? '<td class="px-4 py-3 text-right text-xs text-slate-400">-</td>' : ''}
       <td class="px-4 py-3 text-right text-xs text-slate-400">0.0%</td>
       <td class="px-4 py-3 text-right text-xs text-slate-400">0개월</td>
     </tr>
@@ -723,6 +763,7 @@ function runSimulation() {
 
   results.forEach(r => {
     const retColor = r.returnPct >= 0 ? 'text-rose-600' : 'text-blue-600';
+    const cagrColor = r.cagrPct >= 0 ? 'text-rose-600' : 'text-blue-600';
     const isPartial = r.monthsInvested < n;
     const baseP = realPower ? r.realPrincipalKrw : r.principalKrw;
     html += `
@@ -730,14 +771,12 @@ function runSimulation() {
         <td class="px-4 py-3 font-semibold text-slate-900 whitespace-nowrap">
           <span class="w-2.5 h-2.5 rounded-full inline-block mr-2" style="background:${r.asset.color}"></span>
           ${r.asset.name}
-        </td>
-        <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">
-          ${r.firstInvestYm}~ (${r.monthsInvested}개월)
-          ${isPartial ? '<span class="ml-1 px-1.5 py-0.5 text-[10px] bg-amber-100 text-amber-800 rounded">상장후</span>' : ''}
+          ${isPartial ? `<span class="ml-1.5 px-1.5 py-0.5 text-[10px] font-normal bg-amber-100 text-amber-800 rounded">${r.firstInvestYm}~</span>` : ''}
         </td>
         <td class="px-4 py-3 text-right whitespace-nowrap text-slate-600">${fmtKRW(baseP)}</td>
         <td class="px-4 py-3 text-right whitespace-nowrap font-bold text-slate-900">${fmtKRW(r.finalVal)}</td>
         <td class="px-4 py-3 text-right whitespace-nowrap font-bold ${retColor}">${fmtPct(r.returnPct)}</td>
+        <td class="px-4 py-3 text-right whitespace-nowrap font-semibold ${cagrColor}">${fmtPct(r.cagrPct)}</td>
         ${isAfterTax ? `
           <td class="px-4 py-3 text-right text-xs whitespace-nowrap">
             <div class="text-slate-800 font-medium">${r.taxDetail}</div>
@@ -745,9 +784,6 @@ function runSimulation() {
           </td>
         ` : ''}
         ${fxSplit ? `
-          <td class="px-4 py-3 text-right text-xs whitespace-nowrap font-medium ${r.usdReturnPct == null ? 'text-slate-400' : (r.usdReturnPct >= 0 ? 'text-rose-600' : 'text-blue-600')}">
-            ${r.usdReturnPct == null ? '원화자산' : fmtPct(r.usdReturnPct)}
-          </td>
           <td class="px-4 py-3 text-right text-xs whitespace-nowrap font-medium ${r.fxReturnPct == null ? 'text-slate-400' : (r.fxReturnPct >= 0 ? 'text-rose-600' : 'text-blue-600')}">
             ${r.fxReturnPct == null ? '-' : fmtPct(r.fxReturnPct)}
           </td>
@@ -775,7 +811,6 @@ function initAppWithData(json, sourceName) {
   document.getElementById('uploadPrompt').classList.add('hidden');
   document.getElementById('appContent').classList.remove('hidden');
 
-  // 기간 드롭다운 채우기
   const startSel = document.getElementById('startMonth');
   const endSel = document.getElementById('endMonth');
   startSel.innerHTML = '';
@@ -784,7 +819,6 @@ function initAppWithData(json, sourceName) {
     startSel.add(new Option(r.ym, r.ym));
     endSel.add(new Option(r.ym, r.ym));
   });
-  // 기본값: 최근 10년 (데이터가 10년 미만이면 처음부터)
   const defStartIdx = Math.max(0, processedRecords.length - 121);
   startSel.value = processedRecords[defStartIdx].ym;
   endSel.value = processedRecords[processedRecords.length - 1].ym;
