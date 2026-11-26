@@ -1,0 +1,1644 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>적립식 투자 비교 시뮬레이터 (1996~2026)</title>
+  <!-- Pretendard Font -->
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" />
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'Roboto', 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'sans-serif'],
+          },
+          colors: {
+            bgBase: '#F8FAFC',
+            cardBg: '#FFFFFF',
+            borderBase: '#E2E8F0',
+            skyAccent: '#2C99D6',
+            scarlet: '#EB2F33',
+            emeraldProfit: '#10B981',
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      background-color: #F8FAFC;
+      color: #0F172A;
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    }
+    /* 커스텀 토글 스위치 */
+    .toggle-checkbox:checked {
+      right: 0;
+      border-color: #2C99D6;
+    }
+    .toggle-checkbox:checked + .toggle-label {
+      background-color: #2C99D6;
+    }
+    /* 숫자 정렬 고정폭 */
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+    /* 커스텀 툴팁 */
+    .info-tooltip {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      cursor: help;
+    }
+    .info-tooltip .tooltip-text {
+      visibility: hidden;
+      opacity: 0;
+      width: 240px;
+      background-color: #1E293B;
+      color: #F8FAFC;
+      text-align: left;
+      border-radius: 0.5rem;
+      padding: 0.6rem 0.75rem;
+      position: absolute;
+      z-index: 50;
+      bottom: 125%;
+      left: 50%;
+      transform: translateX(-50%);
+      transition: opacity 0.15s ease;
+      font-size: 0.75rem;
+      font-weight: 400;
+      line-height: 1.4;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+      pointer-events: none;
+    }
+    .info-tooltip:hover .tooltip-text {
+      visibility: visible;
+      opacity: 1;
+    }
+    /* 스크롤바 스타일 */
+    ::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #F1F5F9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #CBD5E1;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="min-h-screen antialiased">
+
+  <!-- 알림 토스트 (alert 대체) -->
+  <div id="toast" class="fixed top-4 right-4 z-50 hidden max-w-sm rounded-xl px-4 py-3 text-sm font-medium shadow-lg transition-all duration-300"></div>
+
+  <!-- 메인 컨테이너 -->
+  <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+
+    <!-- 상단 헤더 -->
+    <header class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <div class="flex flex-wrap items-center gap-2">
+          <h1 class="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+            적립식 투자 비교 시뮬레이터 <span class="text-skyAccent">(1996~2026)</span>
+          </h1>
+          <span id="dataBadge" class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600 border border-slate-200">
+            내장 데이터 361개월
+          </span>
+        </div>
+        <p class="mt-1 text-xs text-slate-500 sm:text-sm">
+          매월 10일 근처 실제 주가·배당·원/달러 환율·CPI 데이터를 기반으로 자산별 장기 적립 성과를 비교합니다.
+        </p>
+      </div>
+      <div class="flex items-center gap-2 self-start sm:self-auto">
+        <input type="file" id="jsonUploadInput" accept=".json" class="hidden" />
+        <button
+          id="jsonUploadBtn"
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:border-slate-300 active:scale-[0.99]"
+        >
+          <svg class="h-4 w-4 text-skyAccent" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+          </svg>
+          JSON 데이터 교체
+        </button>
+      </div>
+    </header>
+
+    <!-- 입력 및 제어 패널 -->
+    <section class="mb-6 rounded-2xl border border-borderBase bg-cardBg p-4 shadow-sm sm:p-6">
+      <div class="grid grid-cols-1 gap-5 lg:grid-cols-12">
+
+        <!-- 1. 투자 기간 선택 -->
+        <div class="lg:col-span-5">
+          <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">투자 기간 (매월 10일 적립)</label>
+          <div class="flex items-center gap-2">
+            <select id="startYm" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-800 focus:border-skyAccent focus:bg-white focus:outline-none focus:ring-2 focus:ring-skyAccent/20"></select>
+            <span class="text-slate-400 font-semibold">~</span>
+            <select id="endYm" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-800 focus:border-skyAccent focus:bg-white focus:outline-none focus:ring-2 focus:ring-skyAccent/20"></select>
+          </div>
+          <div class="mt-2 flex flex-wrap gap-1.5">
+            <button type="button" data-years="5" class="quick-period rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-skyAccent hover:text-skyAccent">5년</button>
+            <button type="button" data-years="10" class="quick-period rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-skyAccent hover:text-skyAccent">10년</button>
+            <button type="button" data-years="20" class="quick-period rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-skyAccent hover:text-skyAccent">20년</button>
+            <button type="button" data-years="30" class="quick-period rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-skyAccent hover:text-skyAccent">전체 30년</button>
+          </div>
+        </div>
+
+        <!-- 2. 월 적립 금액 -->
+        <div class="lg:col-span-4">
+          <label for="monthlyAmountInput" class="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">월 적립 금액 (원)</label>
+          <div class="relative">
+            <input
+              id="monthlyAmountInput"
+              type="text"
+              inputmode="numeric"
+              value="500,000"
+              class="tabular-nums w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-3.5 pr-10 text-right text-sm font-bold text-slate-900 focus:border-skyAccent focus:bg-white focus:outline-none focus:ring-2 focus:ring-skyAccent/20"
+            />
+            <span class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">원</span>
+          </div>
+          <div class="mt-2 flex flex-wrap gap-1.5">
+            <button type="button" data-add="100000" class="quick-amount rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-skyAccent hover:text-skyAccent">+10만</button>
+            <button type="button" data-add="500000" class="quick-amount rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-skyAccent hover:text-skyAccent">+50만</button>
+            <button type="button" data-add="1000000" class="quick-amount rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-skyAccent hover:text-skyAccent">+100만</button>
+            <button type="button" data-set="1000000" class="quick-amount-set rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 transition hover:border-skyAccent hover:text-skyAccent">100만원 설정</button>
+          </div>
+        </div>
+
+        <!-- 3. 적금 연이율 -->
+        <div class="lg:col-span-3">
+          <label for="savingsRateInput" class="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">적금 연이율 (매년 연복리)</label>
+          <div class="relative">
+            <input
+              id="savingsRateInput"
+              type="number"
+              step="0.1"
+              min="0"
+              max="30"
+              value="3.5"
+              class="tabular-nums w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-3.5 pr-10 text-right text-sm font-bold text-slate-900 focus:border-skyAccent focus:bg-white focus:outline-none focus:ring-2 focus:ring-skyAccent/20"
+            />
+            <span class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">%</span>
+          </div>
+          <p class="mt-2 text-[11px] text-slate-400">12개월 만기 후 세후 원리금 재예치 가정</p>
+        </div>
+      </div>
+
+      <hr class="my-5 border-slate-100" />
+
+      <!-- 4. 투자 항목 선택 -->
+      <div class="mb-5">
+        <div class="mb-2 flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">비교 항목 선택</span>
+          <div class="flex gap-2">
+            <button id="selectAllAssetsBtn" type="button" class="text-xs font-medium text-skyAccent hover:underline">전체 선택</button>
+            <span class="text-slate-300">|</span>
+            <button id="resetAssetsBtn" type="button" class="text-xs font-medium text-slate-400 hover:text-slate-600">원금+S&amp;P500만</button>
+          </div>
+        </div>
+        <div id="assetToggles" class="flex flex-wrap gap-2"></div>
+      </div>
+
+      <!-- 5. 분석 옵션 토글 3종 -->
+      <div class="grid grid-cols-1 gap-3 rounded-xl bg-slate-50 p-3.5 sm:grid-cols-3 border border-slate-100">
+        <!-- 세금 적용 -->
+        <label class="flex cursor-pointer items-center justify-between gap-3 rounded-lg bg-white px-3.5 py-2.5 border border-slate-200/80 shadow-sm transition hover:border-skyAccent/50">
+          <div>
+            <div class="text-xs font-bold text-slate-800">세금 적용 <span id="taxStatusLabel" class="ml-1 font-semibold text-slate-400">(세전)</span></div>
+            <div class="text-[11px] text-slate-500">이자·배당 15.4%, 해외양도 22%</div>
+          </div>
+          <div class="relative inline-flex items-center">
+            <input type="checkbox" id="toggleTax" class="peer sr-only" />
+            <div class="h-6 w-11 rounded-full bg-slate-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-all peer-checked:bg-skyAccent peer-checked:after:translate-x-full"></div>
+          </div>
+        </label>
+
+        <!-- 실질 구매력 -->
+        <label class="flex cursor-pointer items-center justify-between gap-3 rounded-lg bg-white px-3.5 py-2.5 border border-slate-200/80 shadow-sm transition hover:border-skyAccent/50">
+          <div>
+            <div class="text-xs font-bold text-slate-800">실질 구매력 <span class="font-normal text-slate-400">(CPI 반영)</span></div>
+            <div class="text-[11px] text-slate-500">인플레이션 감안 시작 시점 가치</div>
+          </div>
+          <div class="relative inline-flex items-center">
+            <input type="checkbox" id="toggleReal" class="peer sr-only" />
+            <div class="h-6 w-11 rounded-full bg-slate-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-all peer-checked:bg-skyAccent peer-checked:after:translate-x-full"></div>
+          </div>
+        </label>
+
+        <!-- 환율 효과 분리 -->
+        <label class="flex cursor-pointer items-center justify-between gap-3 rounded-lg bg-white px-3.5 py-2.5 border border-slate-200/80 shadow-sm transition hover:border-skyAccent/50">
+          <div>
+            <div class="text-xs font-bold text-slate-800">환율 효과 분리 보기</div>
+            <div class="text-[11px] text-slate-500">해외자산 USD 수익 vs 환율 기여</div>
+          </div>
+          <div class="relative inline-flex items-center">
+            <input type="checkbox" id="toggleFxDecomp" class="peer sr-only" />
+            <div class="h-6 w-11 rounded-full bg-slate-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-all peer-checked:bg-skyAccent peer-checked:after:translate-x-full"></div>
+          </div>
+        </label>
+      </div>
+    </section>
+
+    <!-- 상단 요약 카드 -->
+    <section class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <!-- 투자 기간 -->
+      <div class="rounded-2xl border border-borderBase bg-cardBg p-4 shadow-sm">
+        <div class="text-xs font-semibold text-slate-500">투자 기간</div>
+        <div id="sumPeriod" class="tabular-nums mt-1.5 text-xl font-bold text-slate-900">-</div>
+        <div id="sumPeriodSub" class="mt-1 text-xs text-slate-500">-</div>
+      </div>
+
+      <!-- 총 납입 원금 -->
+      <div class="rounded-2xl border border-borderBase bg-cardBg p-4 shadow-sm">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-500">총 납입 원금</span>
+          <span id="realBadgeSummary" class="hidden rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200">실질 가치</span>
+        </div>
+        <div id="sumPrincipal" class="tabular-nums mt-1.5 text-xl font-bold text-slate-900">-</div>
+        <div id="sumPrincipalSub" class="mt-1 text-xs text-slate-500">-</div>
+      </div>
+
+      <!-- 1위 자산 -->
+      <div class="rounded-2xl border border-skyAccent/30 bg-gradient-to-br from-white to-sky-50/50 p-4 shadow-sm">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-skyAccent">최고 성과 자산</span>
+          <span id="sumBestBadge" class="rounded-full bg-skyAccent/10 px-2 py-0.5 text-[11px] font-bold text-skyAccent">-</span>
+        </div>
+        <div id="sumBestValue" class="tabular-nums mt-1.5 text-xl font-bold text-slate-900">-</div>
+        <div id="sumBestReturn" class="tabular-nums mt-1 text-xs font-semibold text-emeraldProfit">-</div>
+      </div>
+
+      <!-- 기간 환율 변화 -->
+      <div class="rounded-2xl border border-borderBase bg-cardBg p-4 shadow-sm">
+        <div class="text-xs font-semibold text-slate-500">기간 원/달러 환율 변화</div>
+        <div id="sumFx" class="tabular-nums mt-1.5 text-xl font-bold text-slate-900">-</div>
+        <div id="sumFxSub" class="tabular-nums mt-1 text-xs text-slate-500">-</div>
+      </div>
+    </section>
+
+    <!-- Chart.js 시계열 그래프 카드 -->
+    <section class="mb-6 rounded-2xl border border-borderBase bg-cardBg p-4 shadow-sm sm:p-6">
+      <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex flex-wrap items-center gap-2">
+          <h2 class="text-base font-bold text-slate-900">월별 누적 자산 추이</h2>
+          <span id="chartModeBadges" class="flex flex-wrap gap-1.5"></span>
+        </div>
+        <div class="inline-flex self-start rounded-xl border border-slate-200 bg-slate-50 p-1 sm:self-auto">
+          <button id="scaleLinearBtn" type="button" class="rounded-lg bg-white px-3 py-1 text-xs font-semibold text-slate-800 shadow-sm transition">일반 스케일</button>
+          <button id="scaleLogBtn" type="button" class="rounded-lg px-3 py-1 text-xs font-semibold text-slate-500 transition hover:text-slate-800">로그 스케일</button>
+        </div>
+      </div>
+      <div class="relative h-[320px] w-full sm:h-[420px]">
+        <canvas id="dcaChart"></canvas>
+      </div>
+    </section>
+
+    <!-- 상세 비교 테이블 -->
+    <section class="mb-6 rounded-2xl border border-borderBase bg-cardBg shadow-sm overflow-hidden">
+      <div class="flex flex-col gap-2 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div>
+          <h2 class="text-base font-bold text-slate-900">자산별 최종 성과 상세 비교</h2>
+          <p class="mt-0.5 text-xs text-slate-500">열 제목을 클릭하여 정렬할 수 있습니다. (기본: 최종 평가액 순)</p>
+        </div>
+        <div id="tableRealNotice" class="hidden inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 border border-amber-200">
+          <svg class="h-4 w-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          시작 시점 화폐가치 기준 (CPI 인플레이션 반영)
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-slate-50 text-xs font-semibold text-slate-500 border-b border-slate-200">
+            <tr>
+              <th class="cursor-pointer whitespace-nowrap px-4 py-3 hover:text-slate-800" data-sort="name">항목명</th>
+              <th class="cursor-pointer whitespace-nowrap px-4 py-3 text-right hover:text-slate-800" data-sort="finalValue">최종 평가액</th>
+              <th class="cursor-pointer whitespace-nowrap px-4 py-3 text-right hover:text-slate-800" data-sort="profit">총 수익금</th>
+              <th class="cursor-pointer whitespace-nowrap px-4 py-3 text-right hover:text-slate-800" data-sort="returnPct">최종 수익률</th>
+              <th class="cursor-pointer whitespace-nowrap px-4 py-3 text-right hover:text-slate-800" data-sort="mdd">
+                <span class="info-tooltip inline-flex items-center gap-1">
+                  MDD
+                  <svg class="h-3.5 w-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span class="tooltip-text">적립식 계좌의 원금 투입 왜곡을 보정하기 위해, 매월 '평가액 ÷ 누적원금' 배수의 누적 고점 대비 최대 하락률(%)로 계산합니다.</span>
+                </span>
+              </th>
+              <th class="cursor-pointer whitespace-nowrap px-4 py-3 text-right hover:text-slate-800" data-sort="lossMonths">원금손실 기간</th>
+              <th id="thTax" class="hidden whitespace-nowrap px-4 py-3 text-right">적용 세율 및 납부 세금</th>
+              <th id="thFx" class="hidden whitespace-nowrap px-4 py-3 text-right">환율 효과 분리 (USD / FX)</th>
+            </tr>
+          </thead>
+          <tbody id="resultTableBody" class="divide-y divide-slate-100 tabular-nums"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 하단 각주 및 안내 -->
+    <footer class="rounded-2xl border border-slate-200/70 bg-white/70 p-4 text-[11px] leading-relaxed text-slate-500 sm:p-5">
+      <div class="font-semibold text-slate-600 mb-1.5">시뮬레이션 계산 기준 및 참고 사항</div>
+      <ul class="list-disc space-y-1 pl-4">
+        <li><strong>데이터 기준:</strong> 1996-11 ~ 2026-11 매월 10일 근처 실제 종가·월배당금·원/달러 환율·한국 CPI를 사용합니다. 대체 지표로 QQQ 상장 이전(1999-03 이전)은 나스닥100(^NDX) 지수 비율을 역산 적용하고, SGOV 상장 이전(2020-06 이전)은 가격 $100 고정 및 미국 3개월 국채 금리(^IRX)의 월 이자를 분배금으로 적용했습니다.</li>
+        <li><strong>투자·재투자 가정:</strong> 환전 수수료는 0%로 가정하며, 주식·ETF 배당금은 수령 월 가격으로 즉시 재투자합니다(세후 모드 시 배당소득세 15.4% 차감 후 재투자 및 재투자금 원화 취득원가 합산으로 이중과세 방지). 적금은 12개월 만기마다 이자를 정산해 연복리로 재예치합니다(세후 모드 시 매년 이자소득세 15.4% 차감).</li>
+        <li><strong>세금 기준:</strong> 적금 이자소득세 15.4%, 해외주식/ETF 배당소득세 15.4% 및 최종 매도 시 원화 환산 양도차익 연 250만 원 기본공제 후 22% 과세(일괄 매도 가정 1회 공제). 단순 달러 환차익은 비과세(0%)입니다.</li>
+        <li class="text-slate-600">※ 금융소득종합과세(연 이자·배당 2,000만 원 초과)는 개인별 소득 구간에 따라 다르므로 본 시뮬레이션에서 제외되었습니다.</li>
+        <li class="text-slate-600">※ 한국 CPI 데이터는 2023-11 이후 동일 값(118.85)이 유지되어 있으므로 최근 구간 실질 구매력 해석 시 참고하세요.</li>
+      </ul>
+    </footer>
+
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. 내장 실제 과거 데이터 (1996-11 ~ 2026-11, 총 361개월)
+    // 컬럼 순서: [fx, cpi, spyP, spyD, qqqP, qqqD, ndx, aaplP, aaplD, koP, koD, sgovP, sgovD, irx]
+    // =========================================================================
+    const RAW_DATA = [
+      [833.5,58.15,73.3438,0,null,0,804.72,0.2321,0,26,0.0625,null,0,5.03],
+      [838,58.37,75.0469,0.367,null,0,848.96,0.2188,0,24.8125,0,null,0,4.81],
+      [848.5,58.81,76.125,0,null,0,865.58,0.1629,0,27.0625,0,null,0,5.02],
+      [871.5,59.14,78.4688,0,null,0,872.06,0.1395,0,29.125,0,null,0,4.99],
+      [877,59.36,81.6875,0.299,null,0,854.84,0.1484,0,30.5625,0.07,null,0,5.05],
+      [895,59.63,75.7812,0,null,0,813.43,0.1685,0,28.5,0,null,0,5.14],
+      [894,59.68,84,0,null,0,924.64,0.1568,0,33.25,0,null,0,5.02],
+      [893.5,59.79,87.0781,0.35,null,0,941.18,0.1451,0,34.1875,0.07,null,0,4.91],
+      [891,59.9,91.4688,0,null,0,1010.04,0.1183,0,34.8125,0,null,0,4.99],
+      [895.5,60.34,94.0625,0,null,0,1101.1801,0.2193,0,30.875,0,null,0,5.16],
+      [911,60.62,91.6562,0.348,null,0,1102.95,0.2048,0,28.8125,0.07,null,0,4.96],
+      [918,60.62,96.875,0,null,0,1137.77,0.2026,0,30.8438,0,null,0,4.99],
+      [999,60.67,92.375,0,null,0,1011.54,0.1669,0,27.875,0.07,null,0,5.2],
+      [1565.9,62.21,97.2188,0.38,null,0,1033.21,0.1317,0,31.9375,0,null,0,5.06],
+      [1739,63.69,94,0,null,0,971.17,0.1629,0,33.0312,0,null,0,4.92],
+      [1586,64.78,102.25,0,null,0,1139.79,0.1735,0,33.9688,0,null,0,5.08],
+      [1597,64.67,106.5625,0.313,null,0,1148.61,0.2148,0,36.3125,0.075,null,0,4.96],
+      [1387,64.89,110.875,0,null,0,1202.97,0.236,0,38.875,0,null,0,5.05],
+      [1393,64.56,110.75,0,null,0,1237.66,0.2762,0,38.7188,0,null,0,4.99],
+      [1395,64.29,111.5,0.352,null,0,1199.3101,0.2506,0,40.625,0.075,null,0,5],
+      [1316,64.29,116.4688,0,null,0,1391.11,0.2863,0,43.5938,0,null,0,4.92],
+      [1345,64.51,108.5,0,null,0,1362.88,0.3387,0,40.0625,0,null,0,4.85],
+      [1370,64.78,98.5,0.359,null,0,1235.37,0.3404,0,30.4375,0.075,null,0,4.65],
+      [1335,65,99.9688,0,null,0,1243.4,0.3343,0,31.3438,0,null,0,3.81],
+      [1318,64.78,113,0,null,0,1477.48,0.3136,0,36.0625,0.075,null,0,4.44],
+      [1208,64.67,116.8906,0.392,null,0,1652.76,0.2857,0,33.0312,0,null,0,4.36],
+      [1175,64.62,126.5312,0,null,0,2000.1801,0.4096,0,33.0312,0,null,0,4.39],
+      [1179,64.89,122.3125,0,null,0,1944.1801,0.3421,0,31.8125,0,null,0,4.37],
+      [1234.9,65,129.1875,0.32,51.0625,0,2038.51,0.2907,0,31.4375,0.08,null,0,4.47],
+      [1225,65.16,136.3125,0,55.4375,0,2219.21,0.3237,0,30.9375,0,null,0,4.22],
+      [1201.2,65.06,134.3281,0,53.5,0,2134.75,0.404,0,33.5312,0,null,0,4.47],
+      [1167.5,64.67,130.9062,0.405,52.5781,0,2097.79,0.4297,0,33.0625,0.08,null,0,4.53],
+      [1184,64.45,139.875,0,59.5312,0,2384.24,0.4866,0,31.5312,0,null,0,4.56],
+      [1199.3,65.11,128.6562,0,54.125,0,2163.77,0.4944,0,29.9062,0,null,0,4.81],
+      [1192,65.28,135.875,0.372,63.125,0,2534.6101,0.6914,0,27.5625,0.08,null,0,4.62],
+      [1204,65.77,133.6562,0,64.6562,0,2578.8799,0.5954,0,26.1875,0,null,0,4.72],
+      [1180,65.66,137.7188,0,70,0,2797.6101,0.8164,0,28.9375,0.08,null,0,5.05],
+      [1132.8,65.55,141.875,0.348,79.9062,0,3203.28,0.9196,0,31.625,0,null,0,5.12],
+      [1133.5,65.84,146.25,0,92.5,0,3717.4099,0.8728,0,29.4062,0,null,0,5.23],
+      [1121,66.04,141.5625,0,102.25,0,4090,1.0134,0,28.3438,0,null,0,5.5],
+      [1120.2,66.37,140.125,0.371,114.5,0,4587.1602,1.1228,0,22.75,0.085,null,0,5.68],
+      [1110.5,66.11,150.8438,0,100.125,0,3998.26,1.1161,0,22.5,0,null,0,5.69],
+      [1109.2,65.77,138.125,0,79.75,0,3244.73,0.8867,0,26.4062,0,null,0,5.93],
+      [1113.4,66.11,144.875,0.348,90.75,0,3638.4199,0.8142,0,26.3125,0.085,null,0,5.67],
+      [1118.5,66.37,147.8438,0,94.4844,0,3772.2,1.0201,0,28.7812,0,null,0,5.88],
+      [1114.5,66.71,146.7188,0,89.8125,0,3595.1899,0.8493,0,30.5,0,null,0,6.06],
+      [1109.5,67.57,149.5938,0.375,92.8125,0,3706.74,1.0435,0,26.5,0.085,null,0,5.94],
+      [1121.9,67.5,137.6875,0,78.3125,0,3188.29,0.3728,0,29.0938,0,null,0,6.04],
+      [1137,67.1,136.625,0,71.75,0,2890.26,0.3404,0,30.9375,0.085,null,0,6.17],
+      [1184,67.37,138.625,0.411,74.375,0,2972.9099,0.2712,0,29.1562,0,null,0,5.89],
+      [1270,68.1,132.125,0,60.1875,0,2413.71,0.2958,0,29.5625,0,null,0,5.14],
+      [1264.1,68.44,133.35,0,57.08,0,2286.76,0.3516,0,30.41,0,null,0,4.92],
+      [1280,69.04,118.08,0.316,42.3,0,1680.64,0.3326,0,25.05,0.09,null,0,4.54],
+      [1334,69.3,116.65,0,39.8,0,1597.87,0.3936,0,21.825,0,null,0,3.83],
+      [1307,69.24,126.02,0,45.77,0,1838.3199,0.4107,0,22.805,0,null,0,3.62],
+      [1289,69.43,126.1,0.346,46.05,0,1846.5,0.3579,0,22.965,0.09,null,0,3.51],
+      [1300,69.57,118.26,0,40.5,0,1624.95,0.3775,0,22.335,0,null,0,3.53],
+      [1284,69.83,119.29,0,40.28,0,1617.45,0.3396,0,22.835,0,null,0,3.35],
+      [1290,69.77,110.05,0.369,34.1,0,1365.39,0.3102,0,24.975,0.27,null,0,3.18],
+      [1308,69.77,108.32,0,32.5,0,1304.6801,0.3004,0,23.075,0,null,0,2.18],
+      [1283,69.37,112.03,0,38,0,1528.75,0.3348,0,24.66,0.09,null,0,1.8],
+      [1282.6,69.5,114.38,0.393,41,0,1645.36,0.4025,0,22.815,0,null,0,1.68],
+      [1312.3,69.9,116.08,0,41.38,0,1656.6801,0.3791,0,22.39,0,null,0,1.65],
+      [1320.2,70.23,111.44,0,36.63,0,1477.64,0.4461,0,23.07,0,null,0,1.7],
+      [1317,70.63,117.24,0.331,38.53,0,1553.8,0.4475,0,23.79,0.1,null,0,1.79],
+      [1329.2,71.03,113.41,0,33.84,0,1363.29,0.4404,0,27.11,0,null,0,1.67],
+      [1280,71.3,105.72,0,29.56,0,1188.78,0.4164,0,28.18,0,null,0,1.73],
+      [1225.5,71.23,103.74,0.353,28.25,0,1135.62,0.3836,0,26.865,0.1,null,0,1.711],
+      [1174.4,71.03,92.12,0,23.9,0,959.05,0.3093,0,27.35,0,null,0,1.687],
+      [1201,71.5,90.62,0,23.4,0,938.98,0.2677,0,25.405,0,null,0,1.633],
+      [1194.1,71.9,91.7,0.378,23.65,0,947.72,0.2559,0,25.485,0.1,null,0,1.631],
+      [1257.8,71.7,80.63,0,21.08,0,849.57,0.252,0,25.73,0,null,0,1.538],
+      [1202,71.77,88.26,0,24.31,0,972.48,0.2707,0,22.28,0.1,null,0,1.197],
+      [1213,72.1,90.7,0.436,25.6,0,1033.0699,0.2729,0,23.25,0,null,0,1.192],
+      [1181,72.56,93.06,0,27.1,0,1087.36,0.2629,0,22.6,0,null,0,1.172],
+      [1196.6,72.96,84.01,0,24.02,0,969.96,0.2562,0,20.03,0,null,0,1.15],
+      [1243,73.83,81.32,0.354,24.01,0,964.29,0.2566,0,18.535,0.11,null,0,1.06],
+      [1230,73.7,87.51,0,25.77,0,1033.14,0.2566,0,20.72,0,null,0,1.117],
+      [1192,73.56,94.88,0,28.84,0,1160.42,0.3314,0,22.25,0,null,0,1.067],
+      [1194.5,73.36,99.25,0.36,30.18,0,1212.99,0.3068,0,23.3,0.11,null,0,0.957],
+      [1178.5,73.3,99.3,0,31.6,0,1268.65,0.3496,0,22.005,0,null,0,0.863],
+      [1180,73.63,98.65,0,30.4,0,1223.14,0.3511,0,22.31,0,null,0,0.926],
+      [1170,74.3,101.96,0.4,33.27,0,1332.28,0.3961,0,22.475,0.11,null,0,0.932],
+      [1146,74.36,104.57,0,35.01,0,1404.87,0.4229,0,21.915,0,null,0,0.887],
+      [1175,74.23,105.18,0,35.19,0,1414.62,0.3911,0,23.31,0.11,null,0,0.922],
+      [1186,74.56,106.73,0.516,34.56,0.014,1388.96,0.3639,0,24.095,0,null,0,0.887],
+      [1175,75.03,113.22,0,38.33,0,1539.77,0.4238,0,25.005,0,null,0,0.847],
+      [1162.1,75.36,114.85,0,37.18,0,1500.29,0.4104,0,26.085,0,null,0,0.921],
+      [1171.5,76.09,112.58,0.395,35.19,0,1417.5,0.4943,0,24.95,0.125,null,0,0.937],
+      [1141.9,76.09,114.82,0,37.17,0,1495.9301,0.5007,0,25.425,0,null,0,0.912],
+      [1191,76.03,108.83,0,34.67,0,1397.1,0.4693,0,24.965,0,null,0,1.027],
+      [1160,76.03,114.35,0.414,36.84,0,1481.27,0.5489,0,25.815,0.125,null,0,1.267],
+      [1147.6,76.49,111.78,0,35.6,0,1432.11,0.5204,0,25.415,0,null,0,1.262],
+      [1155.1,77.16,108.38,0,33.21,0,1346.71,0.5629,0,21.73,0,null,0,1.472],
+      [1146,77.16,113.06,0.469,35.12,0,1413,0.6405,0,21.48,0.125,null,0,1.623],
+      [1149,77.16,112.97,0,35.75,0,1437.73,0.6891,0,20.005,0,null,0,1.657],
+      [1111,76.69,116.97,0.351,37.79,0,1517.0601,0.9777,0,20.585,0.125,null,0,2.029],
+      [1067,76.83,119.33,0.568,39.93,0.379,1605.16,1.1634,0,20.265,0,null,0,2.201],
+      [1053,77.58,119,0,38.53,0,1564.92,1.2314,0,20.695,0,null,0,2.273],
+      [1044,77.9,119.74,0,37.15,0,1506.83,1.3993,0,21.25,0,null,0,2.467],
+      [1000.05,78.37,121.24,0.467,37.52,0,1524.38,1.4225,0,21.535,0.14,null,0,2.687],
+      [1015,78.44,118.09,0,36.48,0,1478.55,1.4971,0,20.935,0,null,0,2.697],
+      [999.01,78.37,116.6,0,35.77,0,1450.36,1.3007,0,22.115,0,null,0,2.822],
+      [1006.72,78.13,120.2,0.488,37.55,0.035,1521.02,1.2789,0,21.975,0.14,null,0,2.937],
+      [1040.5,78.44,121.94,0,38.12,0,1547.66,1.3607,0,21.385,0,null,0,3.095],
+      [1011.6,78.68,123.33,0,39.11,0,1585.71,1.5493,0,21.95,0,null,0,3.434],
+      [1026,79.07,124.35,0.522,39.73,0,1612.2,1.8357,0,22.125,0.14,null,0,3.415],
+      [1037.3,78.91,118.6,0,38.13,0,1546.99,1.7989,0,20.99,0,null,0,3.56],
+      [1046.4,78.6,123.34,0,40.6,0,1650.9301,2.185,0,21.26,0.14,null,0,3.872],
+      [1033.4,78.84,126.45,0.672,41.87,0.101,1698.35,2.6754,0,20.575,0,null,0,3.825],
+      [981.8,79.31,128.9,0,42.88,0,1744.02,2.8879,0,20.825,0,null,0,4.177],
+      [967.6,79.46,126.64,0,40.96,0,1663.75,2.4039,0,20.58,0,null,0,4.425],
+      [979.9,79.93,128.59,0.519,40.56,0.029,1648.23,2.2568,0,21.385,0.155,null,0,4.49],
+      [953.4,80.01,129.74,0,42.26,0,1718.86,2.4525,0,20.74,0,null,0,4.567],
+      [928.8,80.17,132.55,0,41.67,0,1694.8199,2.5214,0,21.79,0,null,0,4.752],
+      [956.6,80.01,123.99,0.555,37.4,0.026,1520.3101,2.0357,0,21.655,0.155,null,0,4.782],
+      [941.6,80.33,126.85,0,37.36,0,1520.9,1.9643,0,21.815,0,null,0,4.875],
+      [957.6,80.8,127.37,0,36.79,0,1496.28,2.2882,0,21.95,0,null,0,4.915],
+      [957.3,81.03,130.41,0.579,38.96,0.023,1583.78,2.5893,0,22.275,0.155,null,0,4.81],
+      [959.2,80.64,135.27,0,41.62,0,1693.29,2.6361,0,22.03,0,null,0,4.855],
+      [933.7,80.25,138.24,0,43.03,0,1751.11,2.9686,0,23.235,0.155,null,0,4.955],
+      [925.4,80.48,141.83,0.793,44.06,0.054,1791.74,3.1696,0,24.405,0,null,0,4.815],
+      [937.7,80.64,141.54,0,44.62,0,1816.15,3.4643,0,24.34,0,null,0,4.95],
+      [937.4,81.19,143.45,0,43.71,0,1778.42,3.0314,0,23.96,0,null,0,5.02],
+      [943.8,81.66,140.99,0.551,43.21,0.027,1756.42,3.2096,0,23.975,0.17,null,0,4.95],
+      [933.6,81.97,144.61,0,44.68,0,1816.9301,3.3661,0,25.04,0,null,0,4.88],
+      [925.65,82.05,149.58,0,46.19,0,1875.2,3.8336,0,26.24,0,null,0,4.72],
+      [931.7,82.05,151.3,0.656,46.82,0.037,1901.96,4.2925,0,25.815,0.17,null,0,4.59],
+      [919.6,82.37,150.92,0,48.48,0,1971.89,4.7268,0,26.05,0,null,0,4.805],
+      [931.5,82.44,144.71,0,47.28,0,1925.14,4.4643,0,27.49,0,null,0,4.415],
+      [939.9,82.92,145.79,0.719,48.2,0.026,1960.2,4.8825,0,27.285,0.17,null,0,3.87],
+      [919.3,83.07,156.22,0,53.51,0,2176.98,5.9568,0,28.935,0,null,0,3.935],
+      [910.4,83.07,143.7,0,48.73,0,1982.16,5.4914,0,29.93,0.17,null,0,3.18],
+      [923.3,83.39,152.08,0.775,52.54,0.053,2134.8799,6.9361,0,31.635,0,null,0,2.97],
+      [937.2,83.78,141.29,0,47.99,0,1953.64,6.3579,0,32.78,0,null,0,3.13],
+      [945,84.09,133.75,0,44.07,0,1793.09,4.6232,0,29.75,0,null,0,2.19],
+      [966.1,84.88,128,0.642,41.26,0.033,1673.03,4.2746,0,29.33,0.19,null,0,1.3],
+      [975,85.35,136.02,0,45.54,0,1852.97,5.5196,0,30.665,0,null,0,1.235],
+      [1043,86.05,140.46,0,49.09,0,1997.02,6.72,0,28.2,0,null,0,1.75],
+      [1027.5,86.6,135.94,0.669,48.54,0.034,1972.54,6.63,0,29.005,0.19,null,0,1.97],
+      [998.2,87.23,125.3,0,45.28,0,1839.5699,6.3082,0,25.02,0,null,0,1.63],
+      [1030,87.07,130.71,0,47.75,0,1941.23,6.1986,0,27.675,0,null,0,1.77],
+      [1091.3,87.15,123.72,0.691,42.8,0.028,1738.0699,5.4146,0,26.905,0.19,null,0,1.62],
+      [1306.4,87.07,88.5,0,31.32,0,1269.8,3.4571,0,20.75,0,null,0,0.21],
+      [1326.18,86.84,92.63,0,30.77,0,1251,3.4243,0,22.95,0.19,null,0,0.2],
+      [1393,86.84,90.11,0.719,29.91,0.043,1222.38,3.5075,0,22.655,0,null,0,0.005],
+      [1349,86.92,86.95,0,29.52,0,1201.13,3.1664,0,21.865,0,null,0,0.065],
+      [1388,87.54,83.11,0,30.34,0,1229.29,3.4939,0,20.335,0,null,0,0.305],
+      [1501,88.17,72.17,0.561,27.33,0.049,1112.4399,3.1654,0,19.58,0.205,null,0,0.235],
+      [1328,88.41,85.83,0,32.89,0,1336.67,4.2936,0,22.365,0,null,0,0.17],
+      [1232.9,88.41,91.24,0,34.35,0,1395.79,4.6275,0,21.375,0,null,0,0.155],
+      [1253.5,88.33,94.4,0.518,36.82,0.044,1495.27,5.0089,0,24.205,0.205,null,0,0.175],
+      [1288.4,88.64,87.96,0,34.92,0,1419.84,4.9471,0,24.155,0,null,0,0.165],
+      [1227.6,88.96,100.99,0,39.6,0,1610.4301,5.8829,0,24.72,0,null,0,0.16],
+      [1223,89.03,104.79,0.508,41.48,0.041,1686.16,6.1629,0,25.29,0.205,null,0,0.135],
+      [1164.3,88.8,107.68,0,42.57,0,1729.63,6.8146,0,27.395,0,null,0,0.06],
+      [1161.1,88.96,109.59,0,43.62,0,1773.17,7.2493,0,27.905,0.205,null,0,0.06],
+      [1165,89.27,110.64,0.59,44.3,0.073,1799.37,7.0154,0,29.29,0,null,0,0.025],
+      [1120,89.97,114.73,0,46.36,0,1886.24,7.5039,0,28.135,0,null,0,0.025],
+      [1161,90.16,107.01,0,43.02,0,1749.76,6.9686,0,26.895,0,null,0,0.1],
+      [1128.1,90.34,114.97,0.48,47.17,0.051,1917.35,8.03,0,27.1,0.22,null,0,0.145],
+      [1114,90.7,119.74,0,49.07,0,1995.65,8.6532,0,27.38,0,null,0,0.135],
+      [1131.8,90.79,116.16,0,47.77,0,1942.61,9.0711,0,27.02,0,null,0,0.145],
+      [1250.4,90.7,109.15,0.531,45.07,0.178,1830.09,8.9468,0,26.225,0.22,null,0,0.085],
+      [1203.35,90.88,108.03,0,44.75,0,1821.03,9.1889,0,26.225,0,null,0,0.14],
+      [1168.6,91.34,112.38,0,46.67,0,1899.24,9.2646,0,28.49,0,null,0,0.145],
+      [1164.85,92.07,111.48,0.602,46.6,0.112,1892.34,9.4075,0,29.26,0.22,null,0,0.135],
+      [1120.7,92.07,116.65,0,49.77,0,2026.98,10.5486,0,29.78,0,null,0,0.115],
+      [1109.6,91.61,122.1,0,53.72,0,2187.74,11.3582,0,31.275,0.22,null,0,0.125],
+      [1143,91.98,124.48,0.653,54.49,0.108,2215.3401,11.4486,0,32.325,0,null,0,0.115],
+      [1128.1,93.07,126.98,0,56.08,0,2284.3799,12.2304,0,31.53,0,null,0,0.135],
+      [1120.9,93.71,132.32,0,58.02,0,2364.3501,12.6621,0,31.77,0,null,0,0.11],
+      [1123.7,94.07,129.94,0.553,56.14,0.077,2284.29,12.3811,0,32.645,0.235,null,0,0.065],
+      [1085.5,94.16,132.46,0,56.76,0,2314.5,11.8143,0,33.7,0,null,0,0.035],
+      [1082.2,94.35,135.87,0,59.19,0,2411.3501,12.4804,0,33.67,0,null,0,0.025],
+      [1084,94.53,127.6,0.628,54.64,0.121,2221.0901,11.6393,0,32.695,0.235,null,0,0.035],
+      [1057.6,94.98,131.97,0,57.96,0,2362,12.6429,0,34.05,0,null,0,0.015],
+      [1080.1,95.62,112.29,0,50.86,0,2073.0901,12.9889,0,31.98,0,null,0,0.015],
+      [1076.75,95.53,116.67,0.625,53.86,0.104,2191.8401,13.5693,0,34.69,0.235,null,0,0.005],
+      [1170.5,95.35,119.58,0,55.94,0,2278.6499,13.8861,0,33.45,0,null,0,0.005],
+      [1131.85,95.44,124.32,0,56.78,0,2312.0701,13.7579,0,33.695,0.235,null,0,0.005],
+      [1149.2,95.8,124.21,0.77,56.38,0.21,2292.24,13.9943,0,33.445,0,null,0,0.005],
+      [1153.55,96.19,129.13,0,58.04,0,2367.3799,15.1157,0,34.67,0,null,0,0.01],
+      [1123,96.55,134.36,0,62.47,0,2547.3201,17.6221,0,33.97,0,null,0,0.08],
+      [1124.15,96.58,137.58,0.614,65.05,0.113,2646.8501,19.7143,0,35.075,0.255,null,0,0.075],
+      [1139.5,96.57,135.9,0,66.13,0,2695.1201,22.4443,0,36.01,0,null,0,0.085],
+      [1142.15,96.74,136.02,0,64.19,0,2616.24,20.3757,0,38.705,0,null,0,0.09],
+      [1171,96.6,131.41,0.688,61.81,0.143,2517.1799,20.3989,0,37.33,0.255,null,0,0.075],
+      [1140.63,96.39,134.14,0,63.37,0,2585.52,21.7218,0,38.99,0,null,0,0.09],
+      [1130.75,96.83,140.84,0,66.86,0,2722.96,22.2036,0.0946,39.395,0,null,0,0.095],
+      [1128.55,97.52,143.51,0.779,68.54,0.2,2788.3501,23.6693,0,37.66,0.255,null,0,0.095],
+      [1114.61,97.34,143.28,0,66.92,0,2728.54,22.8896,0,38.09,0,null,0,0.095],
+      [1087.76,97,138.27,0,63.42,0,2582.77,19.3868,0.0946,36.08,0.255,null,0,0.087],
+      [1077.43,97.17,142.47,1.022,65.12,0.367,2647.5701,18.9221,0,37.64,0,null,0,0.075],
+      [1058.12,97.75,147.08,0,67.17,0,2744.1799,18.6968,0,36.96,0,null,0,0.055],
+      [1095.5,98.08,151.77,0,68.01,0,2774.6399,17.1404,0.0946,38.61,0,null,0,0.065],
+      [1093.9,97.99,156.03,0.694,68.97,0.159,2811.8601,15.6382,0,39.31,0.28,null,0,0.087],
+      [1135.35,97.85,158.67,0,70.02,0,2859.21,15.5604,0,41.07,0,null,0,0.065],
+      [1106,97.85,163.41,0,73.05,0,2981.02,16.1775,0.1089,42.15,0,null,0,0.035],
+      [1127.38,97.73,164.8,0.839,73.42,0.224,2990.49,15.6746,0,41.18,0.28,null,0,0.04],
+      [1134.66,97.94,165.19,0,73.51,0,3000.6599,15.0261,0,40.68,0,null,0,0.03],
+      [1113.97,98.29,169.11,0,76.67,0,3125.9299,16.6914,0.1089,39.83,0,null,0,0.048],
+      [1085.43,98.48,168.87,0.838,78.21,0.238,3185.0701,17.6657,0,38.63,0.28,null,0,0.015],
+      [1071.19,98.18,169.17,0,78.61,0,3210.8401,17.4871,0,37.78,0,null,0,0.04],
+      [1062.12,98.16,177.32,0,82.41,0,3362.98,18.5375,0.1089,39.87,0.28,null,0,0.052],
+      [1052,98.28,180.75,0.98,86.29,0.272,3514.2,20.1982,0,39.85,0,null,0,0.07],
+      [1061.32,98.81,184.14,0,87.3,0,3565.0801,19.0336,0,40.13,0,null,0,0.033],
+      [1072.3,99.07,180.01,0,87.8,0.373,3582.1101,18.8925,0.1089,38.57,0,null,0,0.055],
+      [1066.5,99.25,188.16,0.825,90.61,0.206,3706.3401,18.9614,0,38.65,0.305,null,0,0.04],
+      [1039.9,99.32,183.16,0,85.1,0,3487.76,18.6957,0,38.89,0,null,0,0.028],
+      [1024.29,99.48,189.79,0,88.23,0,3612.73,21.1725,0.1175,40.82,0,null,0,0.02],
+      [1016.95,99.35,195.6,0.937,92.91,0.249,3800.8601,23.5625,0,41.07,0.305,null,0,0.035],
+      [1013.1,99.5,196.34,0,94.66,0,3880.04,23.76,0,42.26,0,null,0,0.015],
+      [1029.8,99.67,193.8,0,95.46,0,3910.46,23.9975,0.1175,39.57,0,null,0,0.025],
+      [1034.2,99.61,200.07,0.939,100.07,0.238,4094.97,25.25,0,42.17,0.305,null,0,0.015],
+      [1073.1,99.31,190.54,0,94.44,0,3870.8601,25.1825,0,44.47,0,null,0,0.005],
+      [1089.28,99.11,203.98,0,101.96,0,4175.9502,27.2075,0.1175,42.39,0.305,null,0,0.015],
+      [1103.75,99.1,203.16,1.135,103.31,0.387,4224.8701,27.9875,0,41.6,0,null,0,0.025],
+      [1083.25,99.77,202.65,0,101.55,0,4169.9702,27.3125,0,42.64,0,null,0,0.013],
+      [1098.61,99.71,206.81,0,104.4,0,4281.1602,30.505,0.1175,42.4,0,null,0,0.005],
+      [1123.32,99.72,204.98,0.931,105.72,0.248,4329.0801,31.1275,0,40.69,0.33,null,0,0.01],
+      [1093.13,99.75,210.04,0,107.75,0,4422.02,31.775,0,40.88,0,null,0,0.015],
+      [1095.39,100.03,210.61,0,108.27,0,4438.6401,31.58,0.13,40.94,0,null,0,0.005],
+      [1110.32,100.05,210.95,1.03,109.49,0.254,4485.46,32.22,0,40.33,0.33,null,0,0.013],
+      [1127.29,100.23,207.48,0,107.65,0,4420.1499,30.82,0,40.39,0,null,0,0.008],
+      [1161.69,100.37,210.57,0,111.57,0,4573.1099,29.93,0.13,41.68,0,null,0,0.065],
+      [1184.87,100.11,195.85,1.033,104.99,0.26,4296.2998,28.1425,0,38.42,0.33,null,0,0.015],
+      [1145.67,100.11,201.52,0,106.79,0,4382.5601,27.9,0,42,0,null,0,0.01],
+      [1158.34,99.92,208.56,0,113.28,0,4641.73,29.1925,0.13,41.77,0.33,null,0,0.125],
+      [1176.39,100.22,205.87,1.212,113.4,0.342,4643.0498,29.0425,0,42.76,0,null,0,0.23],
+      [1206.55,100.39,192.11,0,104.33,0,4283.5498,24.6325,0,41.58,0,null,0,0.175],
+      [1189.69,100.82,185.27,0,96.69,0,3966.28,23.5675,0.13,42.55,0,null,0,0.298],
+      [1204.09,100.56,199.54,1.05,104.66,0.318,4286.9702,25.2925,0,45.23,0.35,null,0,0.303],
+      [1141.97,100.75,204.02,0,108.6,0,4458.71,27.255,0,46.44,0,null,0,0.21],
+      [1169.89,100.81,208.45,0,107.33,0,4402.04,23.355,0.1425,45.75,0,null,0,0.243],
+      [1167.61,100.79,210.07,1.078,108.94,0.287,4461.0498,24.7075,0,45.99,0.35,null,0,0.24],
+      [1148.97,100.6,213.4,0,110.93,0,4554.71,24.245,0,45.57,0,null,0,0.275],
+      [1095.84,100.86,217.64,0,116.62,0,4783.3901,27,0.1425,43.61,0,null,0,0.273],
+      [1112.03,101.46,216.34,1.082,116.33,0.294,4764.6499,26.36,0,43.19,0.35,null,0,0.35],
+      [1115.95,101.6,216.16,0,119.22,0,4893.77,29.0125,0,41.73,0,null,0,0.308],
+      [1162.11,101.45,216.92,0,115.75,0,4747.0298,26.9475,0.1425,40.94,0.35,null,0,0.458],
+      [1164.37,101.56,226.25,1.329,118.96,0.355,4874.2998,28.325,0,41.9,0,null,0,0.5],
+      [1196.96,102.64,226.46,0,122.6,0,5035.1699,29.7775,0,41.04,0,null,0,0.503],
+      [1146.78,102.92,231.51,0,127.38,0,5226.6899,33.03,0.1425,40.58,0,null,0,0.523],
+      [1150.37,102.85,237.69,1.033,131.39,0.274,5385.8999,34.785,0,42.29,0.37,null,0,0.725],
+      [1141.24,102.72,235.34,0,132.02,0,5421.6802,35.7925,0,42.69,0,null,0,0.788],
+      [1132.13,102.83,239.87,0,138.4,0,5681.6802,38.315,0.1575,43.57,0,null,0,0.875],
+      [1130.55,102.61,243.36,1.183,139.23,0.378,5708.1802,36.355,0,45.33,0.37,null,0,0.973],
+      [1149.35,102.78,242.37,0,138.66,0,5694.1499,36.265,0,44.38,0,null,0,1.013],
+      [1144.36,103.37,243.76,0,141.03,0,5788.1899,38.83,0.1575,45.74,0,null,0,1.018],
+      [1129.75,103.49,249.21,1.235,145.87,0.319,5980.5298,40.375,0,46.52,0.37,null,0,1.02],
+      [1132.08,103.39,254.62,0,147.6,0,6063.52,38.975,0,45.87,0,null,0,1.055],
+      [1118.13,102.62,258.09,0,153.68,0,6309.0698,43.6675,0.1575,46.54,0.37,null,0,1.2],
+      [1092.03,102.99,266.31,1.351,155.9,0.329,6393.8901,43.1675,0,45.33,0,null,0,1.263],
+      [1067.55,103.42,274.12,0,162.18,0,6662.6602,43.5725,0,46.07,0,null,0,1.395],
+      [1082.27,104.21,265.34,0,158.87,0,6523.8501,40.6775,0.1575,43.97,0,null,0,1.535],
+      [1063.7,104.1,278.52,1.097,174.08,0.277,7131.1201,45.43,0,44.53,0.39,null,0,1.643],
+      [1064.53,104.29,265.15,0,161.21,0,6615.8701,43.3125,0,43.99,0,null,0,1.695],
+      [1065.41,104.34,272.02,0,169.62,0,6963.5498,47.51,0.1825,42.18,0,null,0,1.845],
+      [1075.08,104.13,278.56,1.246,174.91,0.378,7168.48,47.8075,0,44.13,0.39,null,0,1.868],
+      [1113.81,103.93,278.9,0,177.32,0,7282.6001,47.5875,0,44.97,0,null,0,1.935],
+      [1130.19,104.85,283.16,0,180.52,0,7408.2998,51.8825,0.1825,46.08,0,null,0,2],
+      [1127.9,105.65,288.1,1.323,181.72,0.33,7447.6802,54.5825,0,46.06,0.39,null,0,2.083],
+      [1138.9,105.46,278.3,0,171.73,0,7044.5,54.09,0,45.68,0,null,0,2.22],
+      [1131.4,104.71,272.57,0,166.33,0,6829.1001,48.5425,0.1825,49.87,0.39,null,0,2.3],
+      [1128.3,104.35,264.07,1.435,163.07,0.421,6682.7402,42.4,0,49.24,0,null,0,2.33],
+      [1116.1,104.24,258.88,0,161.28,0,6620.9399,38.45,0,47.07,0,null,0,2.375],
+      [1126.05,104.69,270.62,0,168.4,0,6909.1802,42.3575,0.1825,49.61,0,null,0,2.375],
+      [1133.05,104.49,278.44,1.233,174.73,0.324,7164.02,44.725,0,46.18,0.4,null,0,2.38],
+      [1137.26,104.87,288.29,0,185.47,0,7611.4902,50.155,0,46.64,0,null,0,2.363],
+      [1176.62,105.05,288.1,0,185,0,7586.5298,49.295,0.1925,48.19,0,null,0,2.37],
+      [1185.01,104.88,288.97,1.432,183.15,0.416,7501.9302,48.145,0,51.38,0.4,null,0,2.22],
+      [1181.58,104.56,298.61,0,192.56,0,7903.3999,50.8075,0,51.82,0,null,0,2.13],
+      [1215.7,104.81,288.07,0,184.35,0,7561.6802,50.12,0.1925,53.2,0,null,0,1.928],
+      [1191.22,105.2,298.13,1.384,190.64,0.384,7814.7402,54.175,0,54.4,0.4,null,0,1.913],
+      [1190.06,105.46,293.24,0,188.68,0,7740.3599,57.5225,0,53.66,0,null,0,1.633],
+      [1157.14,104.87,308.35,0,200.96,0,8241.9102,65.55,0.1925,51.84,0.4,null,0,1.513],
+      [1191.01,105.12,313.53,1.57,203.9,0.458,8354.29,67.12,0,53.77,0,null,0,1.515],
+      [1161.18,105.51,325.71,0,218.43,0,8966.6396,77.5825,0,55.53,0,null,0,1.498],
+      [1186.96,105.59,334.68,0,231.97,0,9516.8398,80.3875,0.1925,59.75,0,null,0,1.52],
+      [1193.1,105.35,288.42,1.406,204.11,0.363,8372.2695,71.335,0,53.66,0.41,null,0,0.39],
+      [1211.71,104.89,275.66,0,203.03,0,8332.7402,68.3125,0,46.93,0,null,0,0.2],
+      [1220.2,104.83,292.5,0,226.87,0,9298.9199,78.7525,0.205,45.54,0,null,0,0.105],
+      [1189.9,105.11,319,1.366,246.22,0.424,10094.2598,88.21,0,48.62,0.41,100.015,0,0.165],
+      [1204.34,105.03,317.59,0,263.97,0,10836.3301,95.92,0,45.15,0,100.029,0.006,0.12],
+      [1186.28,105.62,335.57,0,270.31,0,11085.1699,112.7275,0.205,47.72,0,100.015,0.011,0.088],
+      [1184.41,106.2,333.89,1.339,272.34,0,11154.1201,113.49,0,50,0.41,100.015,0.007,0.103],
+      [1143.46,105.61,352.43,0,294.53,0,12088.1104,124.4,0,51.09,0,100.015,0.005,0.09],
+      [1117.63,105.51,354.04,0,283.42,0,11624.29,115.97,0.205,53.98,0.41,100.015,0.005,0.09],
+      [1086.83,105.77,366.73,1.58,302.52,0.561,12401.7402,123.24,0,53.05,0,100.015,0.011,0.07],
+      [1097.39,106.51,378.69,0,314.42,0,12902.4902,128.98,0,50.2,0,100.015,0,0.08],
+      [1106.9,107.08,390.08,0,332.75,0,13655.2695,135.39,0.205,49.6,0,100.015,0.005,0.035],
+      [1139.85,107.36,389.58,1.278,310.88,0.395,12752.0703,119.98,0,51.44,0.42,100.02,0,0.03],
+      [1124.6,107.5,411.64,0,336.67,0,13819.3496,131.24,0,53.35,0,100.02,0.001,0.01],
+      [1112.28,107.58,417.94,0,325.76,0,13359.0801,126.85,0.22,54.91,0,100.03,0.004,0.005],
+      [1114.17,107.58,423.61,1.376,340.35,0.397,13960.3496,126.11,0,55.91,0.42,100.025,0.002,0.02],
+      [1146.29,107.8,437.08,0,362.42,0,14877.8896,144.5,0,54.48,0,100.02,0.002,0.043],
+      [1152.5,108.32,442.68,0,366.84,0,15053.5801,145.6,0.22,56.8,0,100.02,0.002,0.05],
+      [1169.63,108.76,445.44,1.428,376.59,0.414,15440.75,148.97,0,55.61,0.42,100.03,0.003,0.038],
+      [1194.58,108.95,434.69,0,358.39,0,14713.7305,142.81,0,54.23,0,100.02,0.003,0.04],
+      [1181.16,109.5,463.62,0,389.51,0,15985.5703,147.92,0.22,56.72,0.42,100.03,0.003,0.045],
+      [1180.99,109.68,470.74,1.633,398.01,0.491,16331.9805,179.45,0,56.28,0,100.025,0.008,0.05],
+      [1199.13,110.36,465.51,0,380.11,0,15614.4297,172.19,0,60.43,0,100.02,0,0.09],
+      [1196.31,111,449.32,0,358.43,0,14705.6396,172.12,0.22,61.38,0,100.02,0.002,0.37],
+      [1228.21,111.81,425.48,1.366,331.27,0.434,13591,158.52,0,57.88,0.44,100.03,0.008,0.36],
+      [1233.38,112.64,439.92,0,340.89,0,13990.21,165.75,0,63.81,0,100.03,0.018,0.68],
+      [1275.02,113.39,399.09,0,300.76,0,12345.8604,154.51,0.23,64.01,0,100.04,0.025,0.878],
+      [1268.01,114.08,389.8,1.577,288.84,0.527,11832.8203,137.13,0,61.41,0.44,100.05,0.041,1.288],
+      [1308.9,114.63,384.23,0,289.04,0,11860.2803,144.87,0,62.94,0,100.06,0.069,1.953],
+      [1310.54,114.5,419.99,0,325.93,0,13378.3203,169.24,0.23,63.65,0,100.07,0.116,2.535],
+      [1377.38,114.83,410.97,1.596,310.74,0.519,12739.7197,163.43,0,62.5,0.44,100.1,0.168,2.995],
+      [1412.54,115.13,360.02,0,266.41,0,10926.9697,140.42,0,54.39,0,100.17,0.157,3.285],
+      [1377.52,115.01,394.69,0,282.75,0,11605.96,146.87,0.23,60.88,0.44,100.21,0.241,4.055],
+      [1307.62,115.2,398.95,1.781,285.58,0.655,11706.4404,144.49,0,63.97,0,100.25,0.61,4.168],
+      [1243.83,116.06,390.58,0,272.83,0,11205.7803,130.73,0,62.13,0,100.21,0,4.565],
+      [1264.15,116.36,408.04,0,299.7,0,12304.9199,151.01,0.23,59.62,0,100.22,0.394,4.635],
+      [1324.51,116.55,385.91,1.506,288.55,0.472,11830.2803,148.5,0,59.21,0.46,100.3,0.278,4.803],
+      [1319.09,116.8,409.61,0,317.87,0,13051.2305,162.03,0,62.69,0,100.33,0.362,4.838],
+      [1324.48,117.15,412.85,0,325.14,0,13347.8301,173.56,0.24,63.5,0,100.3,0.392,5.065],
+      [1288.61,117.14,433.8,1.638,360.49,0.504,14784.2998,183.79,0,60.21,0.46,100.36,0.432,5.095],
+      [1306.45,117.22,439.66,0,366.36,0,15045.6396,188.61,0,59.31,0,100.33,0.417,5.225],
+      [1315.54,118.42,445.91,0,368.59,0,15128.8398,177.97,0.24,60.92,0,100.36,0.442,5.268],
+      [1331.59,119.11,448.45,1.583,376.97,0.536,15461.8701,179.36,0,58.88,0.46,100.37,0.431,5.293],
+      [1349.79,119.51,434.54,0,368.59,0,15131.5195,178.39,0,54.03,0,100.38,0.412,5.323],
+      [1309.89,118.85,440.61,0,378.39,0,15529.1201,186.4,0.24,56.72,0.46,100.43,0.427,5.25],
+      [1316.38,118.85,461.99,1.906,395.52,1.024,16221.7305,193.18,0,59.04,0,100.43,0.898,5.233],
+      [1320.42,118.85,476.56,0,408.5,0,16793.0508,186.19,0,60.2,0,100.42,0,5.225],
+      [1331.37,118.85,500.98,0,435.34,0,17882.6602,187.15,0.24,59.7,0,100.43,0.458,5.228],
+      [1312.55,118.85,511.28,1.595,437.39,0.573,17951.6895,172.75,0,60.24,0.485,100.44,0.41,5.24],
+      [1349.05,118.85,514.12,0,438.37,0,18011.6602,167.78,0,58.92,0,100.43,0.45,5.243],
+      [1367.77,118.85,520.84,0,442.06,0,18161.1797,183.05,0.25,63.26,0,100.47,0.428,5.243],
+      [1375.71,118.85,535.66,1.759,464.83,0.762,19074.6699,193.12,0,63.59,0.485,100.43,0.44,5.233],
+      [1383.42,118.85,561.32,0,502.96,0,20675.3809,232.98,0,62.83,0,100.43,0.439,5.225],
+      [1369.87,118.85,533.27,0,451.38,0,18542.0293,217.53,0.25,68.17,0,100.46,0.453,5.073],
+      [1343.41,118.85,548.79,1.746,458.66,0.677,18829.1406,220.11,0,71.55,0.485,100.45,0.444,4.835],
+      [1350.77,118.85,576.13,0,492.59,0,20241.7598,229.04,0,69.25,0,100.44,0.43,4.53],
+      [1396.69,118.85,598.76,0,513.84,0,21106.5898,224.23,0.25,63.36,0.485,100.43,0.415,4.415],
+      [1432.6,118.85,602.8,1.966,520.6,0.835,21368.1797,247.77,0,62.91,0,100.44,0.75,4.285],
+      [1473.36,118.85,580.49,0,507.19,0,20847.5801,236.85,0,61.07,0,100.45,0,4.213],
+      [1451,118.85,604.85,0,529.25,0,21756.7305,227.65,0.25,64.55,0,100.43,0.363,4.228],
+      [1456.74,118.85,560.58,1.696,472.73,0.716,19430.9492,227.48,0,71.45,0.51,100.43,0.313,4.185],
+      [1450.37,118.85,524.58,0,446.18,0,18343.5703,190.42,0,70.76,0,100.44,0.346,4.197],
+      [1417.77,118.85,582.99,0,507.85,0,20868.1504,210.79,0.26,69.53,0,100.48,0.335,4.28],
+      [1367.55,118.85,603.08,1.761,534.21,0.591,21941.9199,202.67,0,72.35,0.51,100.46,0.358,4.25],
+      [1373.37,118.85,625.82,0,555.45,0,22829.2598,212.41,0,69.77,0,100.47,0.347,4.24],
+      [1392.74,118.85,635.92,0,572.85,0,23526.6309,227.18,0.26,70.75,0,100.49,0.362,4.143],
+      [1386.97,118.85,652.21,1.831,580.7,0.694,23849.2695,226.79,0,67.82,0.51,100.48,0.36,3.93],
+      [1428.39,118.85,653.02,0,589.5,0,24221.7402,245.27,0,67.04,0,100.51,0.347,3.853],
+      [1456.34,118.85,681.44,0,623.23,0,25611.7402,269.43,0.26,70.52,0,100.47,0.348,3.783],
+      [1470.2,118.85,687.57,1.993,627.61,0.794,25776.4395,278.78,0,70.21,0.51,100.47,0.636,3.593],
+      [1467.08,118.85,695.16,0,627.17,0,25787.6602,260.25,0,70.5,0,100.49,0,3.533],
+      [1456.82,118.85,692.12,0,611.47,0,25127.6406,273.68,0.26,76.81,0,100.46,0.309,3.59],
+      [1465.29,118.85,677.18,1.797,607.77,0.733,24956.4707,260.83,0,77.88,0.53,100.46,0.272,3.595],
+      [1483.9,118.85,679.46,0,611.07,0,25116.3398,260.48,0,77.47,0,100.5,0.293,3.593],
+      [1469.91,118.85,739.3,0,713.29,0,29320.6602,292.68,0.27,78.66,0,100.49,0.298,3.6],
+      [1519.26,118.85,725.43,1.904,693.69,0.813,28508.0293,291.58,0,83.59,0.53,100.48,0.299,3.635],
+      [1501.06,118.85,754.95,0,725.51,0,29825.1094,315.32,0,83.49,0,100.5,0.296,3.695],
+      [1417.54,118.85,773.03,0,720.87,0,29621.8008,308.26,0.27,86.87,0,100.5,0.307,3.718],
+      [1345.63,118.85,757.83,1.889,708.69,0.751,29103.5098,326.57,0,87.83,0.53,100.5,0.307,3.845],
+      [1342.13,118.85,778.1,0,746.04,0,30664.6992,340.97,0,89.79,0,100.52,0.301,4.05],
+      [1343.78,118.85,749.92,0,674.76,0,27740.7891,348.51,0.27,96.91,0,100.53,0.33,4.115]
+    ];
+
+    // =========================================================================
+    // 2. 자산 메타데이터 및 상태 관리
+    // =========================================================================
+    const ASSETS = [
+      { key: 'PRINCIPAL', name: '원금', shortName: '원금', color: '#64748B', isForeign: false, type: 'principal' },
+      { key: 'SAVINGS',   name: '적금', shortName: '적금', color: '#F59E0B', isForeign: false, type: 'savings' },
+      { key: 'SPY',       name: 'S&P500 (SPY)', shortName: 'S&P500', color: '#2C99D6', isForeign: true, type: 'equity' },
+      { key: 'QQQ',       name: '나스닥100 (QQQ)', shortName: 'QQQ', color: '#8B5CF6', isForeign: true, type: 'equity' },
+      { key: 'AAPL',      name: '애플 (AAPL)', shortName: '애플', color: '#1E293B', isForeign: true, type: 'equity' },
+      { key: 'KO',        name: '코카콜라 (KO)', shortName: '코카콜라', color: '#EB2F33', isForeign: true, type: 'equity' },
+      { key: 'USD',       name: '단순 달러 (USD)', shortName: '단순 달러', color: '#14B8A6', isForeign: true, type: 'usd' },
+      { key: 'SGOV',      name: '초단기채 (SGOV)', shortName: 'SGOV', color: '#10B981', isForeign: true, type: 'equity' },
+    ];
+
+    const state = {
+      dataset: [],          // 전처리된 월별 레코드 배열
+      startIdx: 0,
+      endIdx: 0,
+      monthlyAmount: 500000,
+      savingsRate: 3.5,
+      selectedAssets: new Set(ASSETS.map(a => a.key)),
+      taxMode: false,       // false: 세전, true: 세후
+      realMode: false,      // false: 명목, true: 실질 구매력 (CPI)
+      fxDecompMode: false,  // 환율 효과 분리 보기
+      scaleType: 'linear',  // 'linear' | 'logarithmic'
+      sortKey: 'finalValue',
+      sortDir: 'desc',
+      lastResults: []
+    };
+
+    let chartInstance = null;
+
+    // =========================================================================
+    // 3. 데이터 전처리 (내장 RAW_DATA 및 외부 JSON 업로드 공용)
+    // =========================================================================
+    function buildDatasetFromRaw(rawArr) {
+      const result = [];
+      let year = 1996;
+      let month = 11;
+      for (let i = 0; i < rawArr.length; i++) {
+        const r = rawArr[i];
+        const ym = `${year}-${String(month).padStart(2, '0')}`;
+        const [fx, cpi, spyP, spyD, qqqP, qqqD, ndx, aaplP, aaplD, koP, koD, sgovP, sgovD, irx] = r;
+
+        // 프록시 전처리
+        // QQQ: 1999-03 이전(qqqP가 null인 구간) -> 51.0625 * (ndx / 2038.51)
+        const finalQqqP = qqqP !== null ? qqqP : (51.0625 * (ndx / 2038.51));
+        // SGOV: 2020-06 이전(sgovP가 null인 구간) -> 가격 100.0 고정, 월 분배금 100.0 * (irx / 100) / 12
+        const finalSgovP = sgovP !== null ? sgovP : 100.0;
+        const finalSgovD = sgovP !== null ? sgovD : (100.0 * ((irx || 0) / 100) / 12);
+
+        result.push({
+          ym,
+          fx: Number(fx),
+          cpi: Number(cpi),
+          SPY:  { p: Number(spyP), d: Number(spyD || 0) },
+          QQQ:  { p: Number(finalQqqP), d: Number(qqqD || 0) },
+          AAPL: { p: Number(aaplP), d: Number(aaplD || 0) },
+          KO:   { p: Number(koP), d: Number(koD || 0) },
+          SGOV: { p: Number(finalSgovP), d: Number(finalSgovD || 0) }
+        });
+
+        month++;
+        if (month > 12) {
+          month = 1;
+          year++;
+        }
+      }
+      return result;
+    }
+
+    function buildDatasetFromUploadedJson(jsonObj) {
+      if (!jsonObj || !Array.isArray(jsonObj.data) || jsonObj.data.length < 2) {
+        throw new Error('올바른 market_data.json 형식이 아닙니다. (data 배열 필요)');
+      }
+      const rows = jsonObj.data;
+      // QQQ 기준점 탐색 (첫 실제 QQQ 가격 & proxy_ndx)
+      let baseQqqP = 51.0625;
+      let baseNdx = 2038.51;
+      const firstRealQqq = rows.find(d => d.QQQ && d.QQQ.p !== null && d.QQQ.proxy_ndx);
+      if (firstRealQqq) {
+        baseQqqP = Number(firstRealQqq.QQQ.p);
+        baseNdx = Number(firstRealQqq.QQQ.proxy_ndx);
+      }
+
+      return rows.map(row => {
+        const qqqObj = row.QQQ || {};
+        const sgovObj = row.SGOV || {};
+        const finalQqqP = qqqObj.p !== null && qqqObj.p !== undefined
+          ? Number(qqqObj.p)
+          : (baseQqqP * (Number(qqqObj.proxy_ndx || baseNdx) / baseNdx));
+        const hasRealSgov = sgovObj.p !== null && sgovObj.p !== undefined;
+        const finalSgovP = hasRealSgov ? Number(sgovObj.p) : 100.0;
+        const finalSgovD = hasRealSgov
+          ? Number(sgovObj.d || 0)
+          : (100.0 * (Number(sgovObj.proxy_irx || 0) / 100) / 12);
+
+        return {
+          ym: String(row.ym),
+          fx: Number(row.fx),
+          cpi: Number(row.cpi),
+          SPY:  { p: Number(row.SPY?.p || 1), d: Number(row.SPY?.d || 0) },
+          QQQ:  { p: finalQqqP, d: Number(qqqObj.d || 0) },
+          AAPL: { p: Number(row.AAPL?.p || 1), d: Number(row.AAPL?.d || 0) },
+          KO:   { p: Number(row.KO?.p || 1), d: Number(row.KO?.d || 0) },
+          SGOV: { p: finalSgovP, d: finalSgovD }
+        };
+      });
+    }
+
+    // =========================================================================
+    // 4. 유틸리티 포맷터 및 토스트
+    // =========================================================================
+    function formatKRW(val) {
+      if (!isFinite(val)) return '0원';
+      return Math.round(val).toLocaleString('ko-KR') + '원';
+    }
+
+    function formatShortKRW(val) {
+      const abs = Math.abs(val);
+      const sign = val < 0 ? '-' : '';
+      if (abs >= 1e8) {
+        return `${sign}${(abs / 1e8).toFixed(2)}억`;
+      }
+      if (abs >= 1e4) {
+        return `${sign}${Math.round(abs / 1e4).toLocaleString('ko-KR')}만`;
+      }
+      return `${sign}${Math.round(abs).toLocaleString('ko-KR')}원`;
+    }
+
+    function formatPct(val, showPlus = true) {
+      if (!isFinite(val)) return '0.0%';
+      const sign = showPlus && val > 0 ? '+' : '';
+      return `${sign}${val.toFixed(1)}%`;
+    }
+
+    function showToast(msg, type = 'success') {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className = 'fixed top-4 right-4 z-50 max-w-sm rounded-xl px-4 py-3 text-sm font-semibold shadow-lg transition-all duration-300 ' +
+        (type === 'error'
+          ? 'bg-red-600 text-white'
+          : 'bg-slate-900 text-white');
+      el.classList.remove('hidden');
+      clearTimeout(el._timer);
+      el._timer = setTimeout(() => {
+        el.classList.add('hidden');
+      }, 3500);
+    }
+
+    // =========================================================================
+    // 5. 핵심 금융·세무 시뮬레이션 엔진
+    // =========================================================================
+    function runSimulation() {
+      const slice = state.dataset.slice(state.startIdx, state.endIdx + 1);
+      const N = slice.length;
+      if (N === 0) return;
+
+      const M = Math.max(0, state.monthlyAmount);
+      const r = Math.max(0, state.savingsRate) / 100;
+      const taxMode = state.taxMode;
+      const realMode = state.realMode;
+
+      const startCpi = slice[0].cpi;
+      const lastRow = slice[N - 1];
+      const lastFx = lastRow.fx;
+      const labels = slice.map(d => d.ym);
+      const fxArr = slice.map(d => d.fx);
+
+      // 각 자산 시뮬레이션 결과 저장
+      const results = [];
+
+      for (const asset of ASSETS) {
+        if (!state.selectedAssets.has(asset.key)) continue;
+
+        const seriesDisplay = new Array(N);
+        let peakMultiple = 0;
+        let mdd = 0;
+        let lossMonths = 0;
+
+        let totalInvestedKRW = 0;
+        let totalInvestedUsd = 0;
+        let finalNominalKRW = 0;
+        let finalDisplayKRW = 0;
+
+        // 세금 관련
+        let totalTaxKRW = 0;
+        let divTaxKRW = 0;
+        let capTaxKRW = 0;
+        let interestTaxKRW = 0;
+        let taxRateLabel = '비과세 (0%)';
+
+        // ---------------------------------------------------------------------
+        // A. 원금 (PRINCIPAL)
+        // ---------------------------------------------------------------------
+        if (asset.type === 'principal') {
+          for (let i = 0; i < N; i++) {
+            totalInvestedKRW += M;
+            const realFactor = realMode ? (startCpi / slice[i].cpi) : 1;
+            const val = totalInvestedKRW * realFactor;
+            seriesDisplay[i] = val;
+          }
+          finalNominalKRW = totalInvestedKRW;
+          finalDisplayKRW = seriesDisplay[N - 1];
+          taxRateLabel = '비과세 (0%)';
+        }
+
+        // ---------------------------------------------------------------------
+        // B. 적금 (SAVINGS): 매년 12개월 연복리 정산, 세후 시 매년 이자의 15.4% 과세
+        // ---------------------------------------------------------------------
+        else if (asset.type === 'savings') {
+          let lumpSum = 0; // 만기 정산된 누적 원리금
+          let cycleMonth = 0; // 현재 1년 회차 내 경과 개월 수 (1..12)
+
+          for (let i = 0; i < N; i++) {
+            totalInvestedKRW += M;
+            cycleMonth += 1;
+
+            // 현재 회차 누적 이자 계산:
+            // 1) 기존 만기 원리금(예금)의 경과 개월 이자: lumpSum * r * (cycleMonth / 12)
+            // 2) 현재 회차 월 적립금들의 경과 이자 합:
+            //    k번째(1..cycleMonth) 적립금은 (cycleMonth - k + 1)개월 굴러감 -> 합계: cycleMonth*(cycleMonth+1)/2 개월치
+            const lumpInterest = lumpSum * r * (cycleMonth / 12);
+            const depositInterest = M * r * ((cycleMonth * (cycleMonth + 1) / 2) / 12);
+            const accruedInterest = lumpInterest + depositInterest;
+
+            let currentNominalVal = 0;
+            const isYearEnd = (cycleMonth === 12);
+            const isLastMonth = (i === N - 1);
+
+            if (isYearEnd || isLastMonth) {
+              const yearTax = taxMode ? accruedInterest * 0.154 : 0;
+              interestTaxKRW += yearTax;
+              lumpSum = lumpSum + (M * cycleMonth) + (accruedInterest - yearTax);
+              currentNominalVal = lumpSum;
+              cycleMonth = 0;
+            } else {
+              const interimTax = taxMode ? accruedInterest * 0.154 : 0;
+              currentNominalVal = lumpSum + (M * cycleMonth) + (accruedInterest - interimTax);
+            }
+
+            // 위험 지표 (명목 계좌 배수 기준)
+            if (totalInvestedKRW > 0) {
+              const mult = currentNominalVal / totalInvestedKRW;
+              if (mult > peakMultiple) peakMultiple = mult;
+              const dd = (mult / peakMultiple - 1) * 100;
+              if (dd < mdd) mdd = dd;
+              if (currentNominalVal < totalInvestedKRW - 1e-6) lossMonths++;
+            }
+
+            const realFactor = realMode ? (startCpi / slice[i].cpi) : 1;
+            seriesDisplay[i] = currentNominalVal * realFactor;
+            if (isLastMonth) {
+              finalNominalKRW = currentNominalVal;
+            }
+          }
+          finalDisplayKRW = seriesDisplay[N - 1];
+          totalTaxKRW = interestTaxKRW;
+          taxRateLabel = '이자 15.4%';
+        }
+
+        // ---------------------------------------------------------------------
+        // C. 단순 달러 (USD): 환차익 비과세(0%), 환전 수수료 0%
+        // ---------------------------------------------------------------------
+        else if (asset.type === 'usd') {
+          let totalUsd = 0;
+          for (let i = 0; i < N; i++) {
+            const fx = slice[i].fx;
+            totalInvestedKRW += M;
+            const boughtUsd = M / fx;
+            totalUsd += boughtUsd;
+            totalInvestedUsd += boughtUsd;
+
+            const currentNominalVal = totalUsd * fx;
+
+            if (totalInvestedKRW > 0) {
+              const mult = currentNominalVal / totalInvestedKRW;
+              if (mult > peakMultiple) peakMultiple = mult;
+              const dd = (mult / peakMultiple - 1) * 100;
+              if (dd < mdd) mdd = dd;
+              if (currentNominalVal < totalInvestedKRW - 1e-6) lossMonths++;
+            }
+
+            const realFactor = realMode ? (startCpi / slice[i].cpi) : 1;
+            seriesDisplay[i] = currentNominalVal * realFactor;
+            if (i === N - 1) {
+              finalNominalKRW = currentNominalVal;
+            }
+          }
+          finalDisplayKRW = seriesDisplay[N - 1];
+          totalTaxKRW = 0;
+          taxRateLabel = '비과세 (0%)';
+        }
+
+        // ---------------------------------------------------------------------
+        // D. 해외 주식/ETF (SPY, QQQ, AAPL, KO, SGOV)
+        // ---------------------------------------------------------------------
+        else if (asset.type === 'equity') {
+          let shares = 0;
+          let costBasisKRW = 0;
+
+          for (let i = 0; i < N; i++) {
+            const row = slice[i];
+            const fx = row.fx;
+            const p = row[asset.key].p;
+            const d = row[asset.key].d;
+
+            // 1) 월 적립 매수
+            totalInvestedKRW += M;
+            costBasisKRW += M;
+            const usd = M / fx;
+            totalInvestedUsd += usd;
+            shares += usd / p;
+
+            // 2) 배당금 처리 (매수 후 보유분 기준 즉시 재투자)
+            if (d > 0) {
+              const grossDivUsd = shares * d;
+              if (taxMode) {
+                const taxUsd = grossDivUsd * 0.154;
+                const netDivUsd = grossDivUsd - taxUsd;
+                divTaxKRW += taxUsd * fx;
+                shares += netDivUsd / p;
+                // 세후 배당 재투자 원화 환산액을 취득원가에 합산 (이중과세 방지)
+                costBasisKRW += netDivUsd * fx;
+              } else {
+                shares += grossDivUsd / p;
+              }
+            }
+
+            // 3) 월별 평가액 (세후 모드 시 당월 매도 가정 양도세 반영하여 시계열 일관성 유지)
+            const grossValKRW = shares * p * fx;
+            let currentNominalVal = grossValKRW;
+            let currentCapTax = 0;
+            if (taxMode) {
+              const gainKRW = grossValKRW - costBasisKRW;
+              if (gainKRW > 2500000) {
+                currentCapTax = (gainKRW - 2500000) * 0.22;
+              }
+              currentNominalVal = grossValKRW - currentCapTax;
+            }
+
+            if (totalInvestedKRW > 0) {
+              const mult = currentNominalVal / totalInvestedKRW;
+              if (mult > peakMultiple) peakMultiple = mult;
+              const dd = (mult / peakMultiple - 1) * 100;
+              if (dd < mdd) mdd = dd;
+              if (currentNominalVal < totalInvestedKRW - 1e-6) lossMonths++;
+            }
+
+            const realFactor = realMode ? (startCpi / row.cpi) : 1;
+            seriesDisplay[i] = currentNominalVal * realFactor;
+
+            if (i === N - 1) {
+              finalNominalKRW = currentNominalVal;
+              capTaxKRW = currentCapTax;
+            }
+          }
+
+          finalDisplayKRW = seriesDisplay[N - 1];
+          totalTaxKRW = divTaxKRW + capTaxKRW;
+          taxRateLabel = '배당 15.4% + 양도 22%';
+        }
+
+        // 수익금 및 수익률 계산 (기준 원금은 총 납입 원금 명목액 기준, 실질 모드 시 원금도 실질가치 하락 표시)
+        const profitKRW = finalDisplayKRW - totalInvestedKRW;
+        const returnPct = totalInvestedKRW > 0 ? (profitKRW / totalInvestedKRW) * 100 : 0;
+
+        // 환율 효과 분리 계산 (해외 자산 대상)
+        let assetReturnUsd = null;
+        let fxReturnPct = null;
+        let avgBuyFx = null;
+        if (asset.isForeign && totalInvestedUsd > 0) {
+          const totalUsdValue = finalNominalKRW / lastFx;
+          assetReturnUsd = (totalUsdValue / totalInvestedUsd - 1) * 100;
+          avgBuyFx = totalInvestedKRW / totalInvestedUsd;
+          fxReturnPct = (lastFx / avgBuyFx - 1) * 100;
+        }
+
+        results.push({
+          ...asset,
+          series: seriesDisplay,
+          totalInvestedKRW,
+          finalNominalKRW,
+          finalValue: finalDisplayKRW,
+          profit: profitKRW,
+          returnPct,
+          mdd,
+          lossMonths,
+          totalMonths: N,
+          totalTaxKRW: realMode ? totalTaxKRW * (startCpi / lastRow.cpi) : totalTaxKRW,
+          divTaxKRW: realMode ? divTaxKRW * (startCpi / lastRow.cpi) : divTaxKRW,
+          capTaxKRW: realMode ? capTaxKRW * (startCpi / lastRow.cpi) : capTaxKRW,
+          interestTaxKRW: realMode ? interestTaxKRW * (startCpi / lastRow.cpi) : interestTaxKRW,
+          taxRateLabel,
+          assetReturnUsd,
+          fxReturnPct,
+          avgBuyFx
+        });
+      }
+
+      state.lastResults = results;
+      renderSummary(slice, results, totalInvestedKRWFromSlice(N, M), startCpi, lastRow.cpi);
+      renderChart(labels, fxArr, results);
+      renderTable(results);
+    }
+
+    function totalInvestedKRWFromSlice(N, M) {
+      return N * M;
+    }
+
+    // =========================================================================
+    // 6. UI 렌더링 (요약 카드, 차트, 테이블)
+    // =========================================================================
+    function renderSummary(slice, results, nominalPrincipal, startCpi, lastCpi) {
+      const N = slice.length;
+      const years = Math.floor(N / 12);
+      const remMonths = N % 12;
+      const periodText = years > 0
+        ? (remMonths > 0 ? `${years}년 ${remMonths}개월 (${N}회)` : `${years}년 (${N}회)`)
+        : `${N}개월 (${N}회)`;
+
+      document.getElementById('sumPeriod').textContent = periodText;
+      document.getElementById('sumPeriodSub').textContent = `${slice[0].ym} ~ ${slice[N - 1].ym}`;
+
+      const realBadge = document.getElementById('realBadgeSummary');
+      if (state.realMode) {
+        realBadge.classList.remove('hidden');
+        const realPrincipal = nominalPrincipal * (startCpi / lastCpi);
+        const lossPct = ((startCpi / lastCpi) - 1) * 100;
+        document.getElementById('sumPrincipal').textContent = formatKRW(realPrincipal);
+        document.getElementById('sumPrincipalSub').textContent = `명목 ${formatShortKRW(nominalPrincipal)} (물가 ${lossPct.toFixed(1)}%)`;
+      } else {
+        realBadge.classList.add('hidden');
+        document.getElementById('sumPrincipal').textContent = formatKRW(nominalPrincipal);
+        document.getElementById('sumPrincipalSub').textContent = `매월 ${formatKRW(state.monthlyAmount)} × ${N}개월`;
+      }
+
+      // 1위 자산 (원금 제외하고 최고 평가액, 원금만 선택 시 원금 표시)
+      const investOnly = results.filter(r => r.key !== 'PRINCIPAL');
+      const candidates = investOnly.length > 0 ? investOnly : results;
+      if (candidates.length > 0) {
+        const best = [...candidates].sort((a, b) => b.finalValue - a.finalValue)[0];
+        document.getElementById('sumBestBadge').textContent = best.shortName;
+        document.getElementById('sumBestValue').textContent = formatKRW(best.finalValue);
+        const retEl = document.getElementById('sumBestReturn');
+        retEl.textContent = `수익률 ${formatPct(best.returnPct)} (${state.taxMode ? '세후' : '세전'})`;
+        retEl.className = 'tabular-nums mt-1 text-xs font-semibold ' + (best.returnPct >= 0 ? 'text-emeraldProfit' : 'text-scarlet');
+      } else {
+        document.getElementById('sumBestBadge').textContent = '-';
+        document.getElementById('sumBestValue').textContent = '-';
+        document.getElementById('sumBestReturn').textContent = '항목을 선택하세요';
+      }
+
+      // 환율 변화
+      const startFx = slice[0].fx;
+      const endFx = slice[N - 1].fx;
+      const fxChg = ((endFx / startFx) - 1) * 100;
+      document.getElementById('sumFx').textContent = `${Math.round(startFx).toLocaleString()} → ${Math.round(endFx).toLocaleString()}원`;
+      const fxSub = document.getElementById('sumFxSub');
+      fxSub.textContent = `기간 변동 ${formatPct(fxChg)} (USD/KRW)`;
+      fxSub.className = 'tabular-nums mt-1 text-xs font-medium ' + (fxChg >= 0 ? 'text-skyAccent' : 'text-slate-500');
+
+      // 차트 모드 배지
+      const badges = [];
+      badges.push(state.taxMode
+        ? `<span class="rounded-md bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-skyAccent border border-sky-200">세후 기준</span>`
+        : `<span class="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">세전 기준</span>`);
+      if (state.realMode) {
+        badges.push(`<span class="rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 border border-amber-200">시작 시점 화폐가치 기준</span>`);
+      }
+      document.getElementById('chartModeBadges').innerHTML = badges.join('');
+      document.getElementById('tableRealNotice').classList.toggle('hidden', !state.realMode);
+    }
+
+    function renderChart(labels, fxArr, results) {
+      const ctx = document.getElementById('dcaChart').getContext('2d');
+
+      const datasets = results.map(r => ({
+        label: r.shortName,
+        data: r.series.map(v => Math.max(state.scaleType === 'logarithmic' ? 1 : 0, Math.round(v))),
+        borderColor: r.color,
+        backgroundColor: r.color,
+        borderWidth: r.key === 'PRINCIPAL' ? 2 : 2.3,
+        borderDash: r.key === 'PRINCIPAL' ? [5, 5] : [],
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        tension: 0.15
+      }));
+
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                usePointStyle: true,
+                pointStyle: 'circle',
+                boxWidth: 8,
+                padding: 16,
+                font: { family: 'Pretendard, sans-serif', size: 12, weight: '600' },
+                color: '#334155'
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.94)',
+              titleColor: '#F8FAFC',
+              bodyColor: '#E2E8F0',
+              borderColor: '#334155',
+              borderWidth: 1,
+              padding: 12,
+              cornerRadius: 10,
+              titleFont: { family: 'Pretendard, sans-serif', size: 13, weight: '700' },
+              bodyFont: { family: 'Pretendard, sans-serif', size: 12 },
+              itemSort: (a, b) => b.parsed.y - a.parsed.y,
+              callbacks: {
+                title: (items) => {
+                  if (!items.length) return '';
+                  const idx = items[0].dataIndex;
+                  return `${labels[idx]}  |  환율 ${fxArr[idx].toLocaleString('ko-KR')}원`;
+                },
+                label: (ctx) => {
+                  return ` ${ctx.dataset.label}: ${Math.round(ctx.parsed.y).toLocaleString('ko-KR')}원`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: {
+                maxTicksLimit: 10,
+                font: { family: 'Pretendard, sans-serif', size: 11 },
+                color: '#64748B'
+              }
+            },
+            y: {
+              type: state.scaleType,
+              grid: { color: '#F1F5F9' },
+              ticks: {
+                font: { family: 'Pretendard, sans-serif', size: 11 },
+                color: '#64748B',
+                callback: (value) => formatShortKRW(value)
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderTable(results) {
+      const thTax = document.getElementById('thTax');
+      const thFx = document.getElementById('thFx');
+      thTax.classList.toggle('hidden', !state.taxMode);
+      thFx.classList.toggle('hidden', !state.fxDecompMode);
+
+      const sorted = [...results].sort((a, b) => {
+        const k = state.sortKey;
+        let va = a[k];
+        let vb = b[k];
+        if (k === 'name') {
+          return state.sortDir === 'asc' ? va.localeCompare(vb, 'ko') : vb.localeCompare(va, 'ko');
+        }
+        return state.sortDir === 'asc' ? va - vb : vb - va;
+      });
+
+      const tbody = document.getElementById('resultTableBody');
+      if (sorted.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-8 text-center text-sm text-slate-400">비교할 투자 항목을 1개 이상 선택해 주세요.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = sorted.map(r => {
+        const isPos = r.profit >= 0;
+        const profitColor = r.key === 'PRINCIPAL' && !state.realMode
+          ? 'text-slate-500'
+          : (isPos ? 'text-emeraldProfit' : 'text-scarlet');
+
+        // 세금 컬럼 HTML
+        let taxCell = '';
+        if (state.taxMode) {
+          let detailHtml = '';
+          if (r.type === 'equity') {
+            detailHtml = `<div class="text-[11px] text-slate-400">배당 ${formatShortKRW(r.divTaxKRW)} / 양도 ${formatShortKRW(r.capTaxKRW)}</div>`;
+          } else if (r.type === 'savings') {
+            detailHtml = `<div class="text-[11px] text-slate-400">이자세 ${formatShortKRW(r.interestTaxKRW)}</div>`;
+          } else {
+            detailHtml = `<div class="text-[11px] text-slate-400">세금 없음</div>`;
+          }
+          taxCell = `
+            <td class="whitespace-nowrap px-4 py-3.5 text-right">
+              <div class="text-xs font-bold text-slate-800">${formatKRW(r.totalTaxKRW)}</div>
+              <div class="text-[11px] font-medium text-skyAccent">${r.taxRateLabel}</div>
+              ${detailHtml}
+            </td>
+          `;
+        }
+
+        // 환율 효과 분리 컬럼 HTML
+        let fxCell = '';
+        if (state.fxDecompMode) {
+          if (r.isForeign && r.assetReturnUsd !== null) {
+            const usdVal = r.assetReturnUsd;
+            const fxVal = r.fxReturnPct;
+            const maxAbs = Math.max(Math.abs(usdVal), Math.abs(fxVal), 10);
+            const usdBarW = Math.min(100, Math.round((Math.abs(usdVal) / maxAbs) * 100));
+            const fxBarW = Math.min(100, Math.round((Math.abs(fxVal) / maxAbs) * 100));
+            fxCell = `
+              <td class="whitespace-nowrap px-4 py-3 text-right">
+                <div class="inline-flex flex-col gap-1.5 min-w-[165px]">
+                  <div class="flex items-center justify-between gap-2 text-[11px]">
+                    <span class="rounded bg-indigo-50 px-1.5 py-0.5 font-semibold text-indigo-700">USD 자산</span>
+                    <span class="font-bold ${usdVal >= 0 ? 'text-emeraldProfit' : 'text-scarlet'}">${formatPct(usdVal)}</span>
+                  </div>
+                  <div class="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                    <div class="h-full rounded-full ${usdVal >= 0 ? 'bg-indigo-500' : 'bg-scarlet'}" style="width: ${usdBarW}%"></div>
+                  </div>
+                  <div class="flex items-center justify-between gap-2 text-[11px]">
+                    <span class="rounded bg-teal-50 px-1.5 py-0.5 font-semibold text-teal-700">환율 효과</span>
+                    <span class="font-bold ${fxVal >= 0 ? 'text-skyAccent' : 'text-scarlet'}">${formatPct(fxVal)}</span>
+                  </div>
+                  <div class="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                    <div class="h-full rounded-full ${fxVal >= 0 ? 'bg-teal-500' : 'bg-scarlet'}" style="width: ${fxBarW}%"></div>
+                  </div>
+                </div>
+              </td>
+            `;
+          } else {
+            fxCell = `<td class="whitespace-nowrap px-4 py-3.5 text-right text-xs text-slate-400">원화 자산 (해당 없음)</td>`;
+          }
+        }
+
+        const lossRatio = r.totalMonths > 0 ? Math.round((r.lossMonths / r.totalMonths) * 100) : 0;
+
+        return `
+          <tr class="transition hover:bg-slate-50/80">
+            <td class="whitespace-nowrap px-4 py-3.5">
+              <div class="flex items-center gap-2.5">
+                <span class="h-3 w-3 shrink-0 rounded-full" style="background-color: ${r.color}"></span>
+                <span class="font-bold text-slate-800">${r.name}</span>
+              </div>
+            </td>
+            <td class="whitespace-nowrap px-4 py-3.5 text-right font-bold text-slate-900">
+              ${formatKRW(r.finalValue)}
+            </td>
+            <td class="whitespace-nowrap px-4 py-3.5 text-right font-semibold ${profitColor}">
+              ${r.profit > 0 ? '+' : ''}${formatKRW(r.profit)}
+            </td>
+            <td class="whitespace-nowrap px-4 py-3.5 text-right">
+              <span class="inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-bold ${
+                r.key === 'PRINCIPAL' && !state.realMode
+                  ? 'bg-slate-100 text-slate-600'
+                  : (isPos ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-scarlet')
+              }">
+                ${formatPct(r.returnPct)}
+              </span>
+            </td>
+            <td class="whitespace-nowrap px-4 py-3.5 text-right font-semibold ${r.mdd < -20 ? 'text-scarlet' : 'text-slate-600'}">
+              ${r.mdd === 0 ? '0.0%' : `${r.mdd.toFixed(1)}%`}
+            </td>
+            <td class="whitespace-nowrap px-4 py-3.5 text-right text-xs text-slate-600">
+              <span class="font-semibold text-slate-800">${r.lossMonths}개월</span>
+              <span class="text-slate-400">(${lossRatio}%)</span>
+            </td>
+            ${taxCell}
+            ${fxCell}
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // =========================================================================
+    // 7. 컨트롤 초기화 및 이벤트 바인딩
+    // =========================================================================
+    function populatePeriodSelects(defaultYears = 10) {
+      const startSel = document.getElementById('startYm');
+      const endSel = document.getElementById('endYm');
+      const optionsHtml = state.dataset.map((d, idx) => `<option value="${idx}">${d.ym}</option>`).join('');
+      startSel.innerHTML = optionsHtml;
+      endSel.innerHTML = optionsHtml;
+
+      const lastIdx = state.dataset.length - 1;
+      state.endIdx = lastIdx;
+      state.startIdx = Math.max(0, lastIdx - defaultYears * 12);
+
+      startSel.value = String(state.startIdx);
+      endSel.value = String(state.endIdx);
+    }
+
+    function renderAssetToggleButtons() {
+      const container = document.getElementById('assetToggles');
+      container.innerHTML = ASSETS.map(a => {
+        const active = state.selectedAssets.has(a.key);
+        return `
+          <button
+            type="button"
+            data-asset="${a.key}"
+            class="asset-btn inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition active:scale-[0.98] ${
+              active
+                ? 'border-slate-800 bg-slate-900 text-white shadow-sm'
+                : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50'
+            }"
+          >
+            <span class="h-2.5 w-2.5 rounded-full" style="background-color: ${a.color}"></span>
+            ${a.shortName}
+          </button>
+        `;
+      }).join('');
+
+      container.querySelectorAll('.asset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const key = btn.getAttribute('data-asset');
+          if (state.selectedAssets.has(key)) {
+            if (state.selectedAssets.size === 1) {
+              showToast('최소 1개 이상의 항목을 선택해야 합니다.', 'error');
+              return;
+            }
+            state.selectedAssets.delete(key);
+          } else {
+            state.selectedAssets.add(key);
+          }
+          renderAssetToggleButtons();
+          runSimulation();
+        });
+      });
+    }
+
+    function bindEvents() {
+      // 시작/종료 연월 변경
+      const startSel = document.getElementById('startYm');
+      const endSel = document.getElementById('endYm');
+
+      startSel.addEventListener('change', () => {
+        const s = Number(startSel.value);
+        if (s > state.endIdx) {
+          state.endIdx = s;
+          endSel.value = String(s);
+        }
+        state.startIdx = s;
+        runSimulation();
+      });
+
+      endSel.addEventListener('change', () => {
+        const e = Number(endSel.value);
+        if (e < state.startIdx) {
+          state.startIdx = e;
+          startSel.value = String(e);
+        }
+        state.endIdx = e;
+        runSimulation();
+      });
+
+      // 빠른 기간 버튼
+      document.querySelectorAll('.quick-period').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const years = Number(btn.getAttribute('data-years'));
+          const lastIdx = state.dataset.length - 1;
+          state.endIdx = lastIdx;
+          state.startIdx = years >= 30 ? 0 : Math.max(0, lastIdx - years * 12);
+          startSel.value = String(state.startIdx);
+          endSel.value = String(state.endIdx);
+          runSimulation();
+        });
+      });
+
+      // 월 적립 금액 입력 (콤마 포맷)
+      const amtInput = document.getElementById('monthlyAmountInput');
+      amtInput.addEventListener('input', () => {
+        const raw = amtInput.value.replace(/[^0-9]/g, '');
+        const num = raw ? Number(raw) : 0;
+        state.monthlyAmount = num;
+        amtInput.value = num.toLocaleString('ko-KR');
+        runSimulation();
+      });
+
+      document.querySelectorAll('.quick-amount').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const add = Number(btn.getAttribute('data-add'));
+          state.monthlyAmount += add;
+          amtInput.value = state.monthlyAmount.toLocaleString('ko-KR');
+          runSimulation();
+        });
+      });
+
+      document.querySelectorAll('.quick-amount-set').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.monthlyAmount = Number(btn.getAttribute('data-set'));
+          amtInput.value = state.monthlyAmount.toLocaleString('ko-KR');
+          runSimulation();
+        });
+      });
+
+      // 적금 연이율 입력
+      const rateInput = document.getElementById('savingsRateInput');
+      rateInput.addEventListener('input', () => {
+        const val = parseFloat(rateInput.value);
+        state.savingsRate = isNaN(val) ? 0 : Math.max(0, val);
+        runSimulation();
+      });
+
+      // 전체 선택 / 간단 선택
+      document.getElementById('selectAllAssetsBtn').addEventListener('click', () => {
+        state.selectedAssets = new Set(ASSETS.map(a => a.key));
+        renderAssetToggleButtons();
+        runSimulation();
+      });
+
+      document.getElementById('resetAssetsBtn').addEventListener('click', () => {
+        state.selectedAssets = new Set(['PRINCIPAL', 'SPY']);
+        renderAssetToggleButtons();
+        runSimulation();
+      });
+
+      // 3종 분석 토글
+      document.getElementById('toggleTax').addEventListener('change', (e) => {
+        state.taxMode = e.target.checked;
+        const lbl = document.getElementById('taxStatusLabel');
+        lbl.textContent = state.taxMode ? '(세후)' : '(세전)';
+        lbl.className = state.taxMode ? 'ml-1 font-semibold text-skyAccent' : 'ml-1 font-semibold text-slate-400';
+        runSimulation();
+      });
+
+      document.getElementById('toggleReal').addEventListener('change', (e) => {
+        state.realMode = e.target.checked;
+        runSimulation();
+      });
+
+      document.getElementById('toggleFxDecomp').addEventListener('change', (e) => {
+        state.fxDecompMode = e.target.checked;
+        runSimulation();
+      });
+
+      // 차트 스케일 전환
+      const linearBtn = document.getElementById('scaleLinearBtn');
+      const logBtn = document.getElementById('scaleLogBtn');
+
+      linearBtn.addEventListener('click', () => {
+        state.scaleType = 'linear';
+        linearBtn.className = 'rounded-lg bg-white px-3 py-1 text-xs font-semibold text-slate-800 shadow-sm transition';
+        logBtn.className = 'rounded-lg px-3 py-1 text-xs font-semibold text-slate-500 transition hover:text-slate-800';
+        runSimulation();
+      });
+
+      logBtn.addEventListener('click', () => {
+        state.scaleType = 'logarithmic';
+        logBtn.className = 'rounded-lg bg-white px-3 py-1 text-xs font-semibold text-slate-800 shadow-sm transition';
+        linearBtn.className = 'rounded-lg px-3 py-1 text-xs font-semibold text-slate-500 transition hover:text-slate-800';
+        runSimulation();
+      });
+
+      // 테이블 헤더 정렬
+      document.querySelectorAll('thead th[data-sort]').forEach(th => {
+        th.addEventListener('click', () => {
+          const key = th.getAttribute('data-sort');
+          if (state.sortKey === key) {
+            state.sortDir = state.sortDir === 'desc' ? 'asc' : 'desc';
+          } else {
+            state.sortKey = key;
+            state.sortDir = key === 'name' ? 'asc' : 'desc';
+          }
+          renderTable(state.lastResults);
+        });
+      });
+
+      // JSON 데이터 교체 업로드
+      const fileInput = document.getElementById('jsonUploadInput');
+      document.getElementById('jsonUploadBtn').addEventListener('click', () => {
+        fileInput.click();
+      });
+
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const parsed = JSON.parse(ev.target.result);
+            const newDataset = buildDatasetFromUploadedJson(parsed);
+            state.dataset = newDataset;
+            document.getElementById('dataBadge').textContent = `업로드 데이터 ${newDataset.length}개월`;
+            populatePeriodSelects(10);
+            runSimulation();
+            showToast(`데이터 교체 완료 (${newDataset[0].ym} ~ ${newDataset[newDataset.length - 1].ym}, ${newDataset.length}개월)`);
+          } catch (err) {
+            showToast(`JSON 파싱 오류: ${err.message}`, 'error');
+          } finally {
+            fileInput.value = '';
+          }
+        };
+        reader.readAsText(file, 'utf-8');
+      });
+    }
+
+    // =========================================================================
+    // 8. 앱 시작
+    // =========================================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      state.dataset = buildDatasetFromRaw(RAW_DATA);
+      populatePeriodSelects(10); // 기본 최근 10년 (2016-11 ~ 2026-11)
+      renderAssetToggleButtons();
+      bindEvents();
+      runSimulation();
+    });
+  </script>
+</body>
+</html>
