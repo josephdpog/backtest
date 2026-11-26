@@ -178,6 +178,7 @@
         <p>※ QQQ(1999-03 이전)는 나스닥100(^NDX) 수익률로 역산 연결되었으며, SGOV(2020-06 이전)는 주가 $100 고정 및 미국 3개월 국채 금리(^IRX) 월 분배금 재투자로 계산되었습니다.</p>
         <p>※ QYLD, TSLA, NVDA, GOOGL, AMZN, 금, 은, 비트코인은 데이터가 존재하는 상장/제공 월부터 적립을 시작합니다. 배당(분배금)은 수령 시 즉시 재투자(세후 모드 시 15.4% 차감 후 재투자)되며, 해외주식 양도소득세는 최종 일괄 매도 기준 250만 원 공제 후 22%가 적용됩니다.</p>
         <p>※ 세후 기준: 적금 15.4%(매년 정산), 단순 달러 0%, 금 0%(KRX 금현물 기준), 은 15.4%(국내 은 ETF 기준), 비트코인 0%(과세 유예 기준). 연평균 수익률은 매월 적립 현금흐름 기준 연환산 내부수익률(IRR)입니다.</p>
+        <p>※ 실질 구매력(CPI 물가 반영) 모드에서는 투입 원금을 고정하고, 적립 기간의 가중 물가 보정 계수(명목 원금 ÷ 실질 원금)를 최종 금액과 차트에 적용해 '적립 시점 평균 구매력' 기준의 실질 가치를 표시합니다.</p>
         <p>※ 환전 수수료는 0%로 가정합니다. 금융소득종합과세(연 이자·배당 2,000만 원 초과)는 개인별 소득 구간에 따라 다르므로 본 시뮬레이션에서 제외되었습니다.</p>
       </footer>
     </div>
@@ -297,6 +298,7 @@ function simulateAsset(asset, slice, monthlyAmt, savingsRatePct, afterTax, realP
 
   let principalKrw = 0;
   let realPrincipalKrw = 0;
+  let cumInvCpiSum = 0;
   let monthsInvested = 0;
   let firstInvestYm = null;
   let totalTaxKrw = 0;
@@ -326,9 +328,11 @@ function simulateAsset(asset, slice, monthlyAmt, savingsRatePct, afterTax, realP
       const row = slice[i];
       if (!firstInvestYm) firstInvestYm = row.ym;
       monthsInvested++;
-      const realDep = monthlyAmt * (endCpi / (row.cpi || endCpi));
+      const curCpi = row.cpi || endCpi;
+      const realDep = monthlyAmt * (endCpi / curCpi);
       principalKrw += monthlyAmt;
       realPrincipalKrw += realDep;
+      cumInvCpiSum += monthlyAmt / curCpi;
       depositFlows.push(realPower ? realDep : monthlyAmt);
 
       mInYear++;
@@ -338,8 +342,8 @@ function simulateAsset(asset, slice, monthlyAmt, savingsRatePct, afterTax, realP
       const accruedTax = afterTax ? accruedInterest * 0.154 : 0;
       const curVal = base + yearDeposits + accruedInterest - accruedTax;
 
-      const cpiFactor = realPower ? (endCpi / (row.cpi || endCpi)) : 1;
-      series[i] = curVal * cpiFactor;
+      const deflatorAtI = realPower ? (principalKrw / (curCpi * cumInvCpiSum)) : 1;
+      series[i] = curVal * deflatorAtI;
       updateRiskStats(curVal, principalKrw);
 
       if (mInYear === 12 || i === n - 1) {
@@ -350,10 +354,11 @@ function simulateAsset(asset, slice, monthlyAmt, savingsRatePct, afterTax, realP
       }
     }
 
-    const finalVal = base;
-    const basePrincipal = realPower ? realPrincipalKrw : principalKrw;
-    const returnPct = basePrincipal > 0 ? ((finalVal - basePrincipal) / basePrincipal) * 100 : 0;
-    const cagrPct = computeAnnualizedIRR(depositFlows, finalVal);
+    const nomFinalVal = base;
+    const deflatorFinal = (realPower && realPrincipalKrw > 0) ? (principalKrw / realPrincipalKrw) : 1;
+    const finalVal = nomFinalVal * deflatorFinal;
+    const returnPct = principalKrw > 0 ? ((finalVal - principalKrw) / principalKrw) * 100 : 0;
+    const cagrPct = computeAnnualizedIRR(depositFlows, nomFinalVal);
 
     return {
       asset, firstInvestYm, monthsInvested, principalKrw, realPrincipalKrw,
@@ -369,21 +374,24 @@ function simulateAsset(asset, slice, monthlyAmt, savingsRatePct, afterTax, realP
       const row = slice[i];
       if (!firstInvestYm) firstInvestYm = row.ym;
       monthsInvested++;
-      const realDep = monthlyAmt * (endCpi / (row.cpi || endCpi));
+      const curCpi = row.cpi || endCpi;
+      const realDep = monthlyAmt * (endCpi / curCpi);
       principalKrw += monthlyAmt;
       realPrincipalKrw += realDep;
+      cumInvCpiSum += monthlyAmt / curCpi;
       depositFlows.push(realPower ? realDep : monthlyAmt);
 
       totalUsd += monthlyAmt / row.fx;
       const curVal = totalUsd * row.fx;
-      const cpiFactor = realPower ? (endCpi / (row.cpi || endCpi)) : 1;
-      series[i] = curVal * cpiFactor;
+      const deflatorAtI = realPower ? (principalKrw / (curCpi * cumInvCpiSum)) : 1;
+      series[i] = curVal * deflatorAtI;
       updateRiskStats(curVal, principalKrw);
     }
-    const finalVal = totalUsd * slice[n - 1].fx;
-    const basePrincipal = realPower ? realPrincipalKrw : principalKrw;
-    const returnPct = basePrincipal > 0 ? ((finalVal - basePrincipal) / basePrincipal) * 100 : 0;
-    const cagrPct = computeAnnualizedIRR(depositFlows, finalVal);
+    const nomFinalVal = totalUsd * slice[n - 1].fx;
+    const deflatorFinal = (realPower && realPrincipalKrw > 0) ? (principalKrw / realPrincipalKrw) : 1;
+    const finalVal = nomFinalVal * deflatorFinal;
+    const returnPct = principalKrw > 0 ? ((finalVal - principalKrw) / principalKrw) * 100 : 0;
+    const cagrPct = computeAnnualizedIRR(depositFlows, nomFinalVal);
 
     return {
       asset, firstInvestYm, monthsInvested, principalKrw, realPrincipalKrw,
@@ -405,23 +413,26 @@ function simulateAsset(asset, slice, monthlyAmt, savingsRatePct, afterTax, realP
       }
       if (!firstInvestYm) firstInvestYm = row.ym;
       monthsInvested++;
-      const realDep = monthlyAmt * (endCpi / (row.cpi || endCpi));
+      const curCpi = row.cpi || endCpi;
+      const realDep = monthlyAmt * (endCpi / curCpi);
       principalKrw += monthlyAmt;
       realPrincipalKrw += realDep;
+      cumInvCpiSum += monthlyAmt / curCpi;
       depositFlows.push(realPower ? realDep : monthlyAmt);
 
       shares += monthlyAmt / item.p;
       lastValidPrice = item.p;
 
       const curVal = shares * item.p;
-      const cpiFactor = realPower ? (endCpi / (row.cpi || endCpi)) : 1;
-      series[i] = curVal * cpiFactor;
+      const deflatorAtI = realPower ? (principalKrw / (curCpi * cumInvCpiSum)) : 1;
+      series[i] = curVal * deflatorAtI;
       updateRiskStats(curVal, principalKrw);
     }
-    const finalVal = shares * lastValidPrice;
-    const basePrincipal = realPower ? realPrincipalKrw : principalKrw;
-    const returnPct = basePrincipal > 0 ? ((finalVal - basePrincipal) / basePrincipal) * 100 : 0;
-    const cagrPct = computeAnnualizedIRR(depositFlows, finalVal);
+    const nomFinalVal = shares * lastValidPrice;
+    const deflatorFinal = (realPower && realPrincipalKrw > 0) ? (principalKrw / realPrincipalKrw) : 1;
+    const finalVal = nomFinalVal * deflatorFinal;
+    const returnPct = principalKrw > 0 ? ((finalVal - principalKrw) / principalKrw) * 100 : 0;
+    const cagrPct = computeAnnualizedIRR(depositFlows, nomFinalVal);
 
     return {
       asset, firstInvestYm, monthsInvested, principalKrw, realPrincipalKrw,
@@ -459,9 +470,11 @@ function simulateAsset(asset, slice, monthlyAmt, savingsRatePct, afterTax, realP
     }
 
     monthsInvested++;
-    const realDep = monthlyAmt * (endCpi / (row.cpi || endCpi));
+    const curCpi = row.cpi || endCpi;
+    const realDep = monthlyAmt * (endCpi / curCpi);
     principalKrw += monthlyAmt;
     realPrincipalKrw += realDep;
+    cumInvCpiSum += monthlyAmt / curCpi;
     depositFlows.push(realPower ? realDep : monthlyAmt);
 
     const investUsd = monthlyAmt / fx;
@@ -471,8 +484,8 @@ function simulateAsset(asset, slice, monthlyAmt, savingsRatePct, afterTax, realP
     lastValidFx = fx;
 
     const grossValKrw = shares * p * fx;
-    const cpiFactor = realPower ? (endCpi / (row.cpi || endCpi)) : 1;
-    series[i] = grossValKrw * cpiFactor;
+    const deflatorAtI = realPower ? (principalKrw / (curCpi * cumInvCpiSum)) : 1;
+    series[i] = grossValKrw * deflatorAtI;
     updateRiskStats(grossValKrw, principalKrw);
   }
 
@@ -488,12 +501,13 @@ function simulateAsset(asset, slice, monthlyAmt, savingsRatePct, afterTax, realP
   }
 
   totalTaxKrw = divTaxKrw + capTaxKrw;
-  const finalVal = grossValKrw - capTaxKrw;
+  const nomFinalVal = grossValKrw - capTaxKrw;
+  const deflatorFinal = (realPower && realPrincipalKrw > 0) ? (principalKrw / realPrincipalKrw) : 1;
+  const finalVal = nomFinalVal * deflatorFinal;
   if (monthsInvested > 0) series[n - 1] = finalVal;
 
-  const basePrincipal = realPower ? realPrincipalKrw : principalKrw;
-  const returnPct = basePrincipal > 0 ? ((finalVal - basePrincipal) / basePrincipal) * 100 : 0;
-  const cagrPct = computeAnnualizedIRR(depositFlows, finalVal);
+  const returnPct = principalKrw > 0 ? ((finalVal - principalKrw) / principalKrw) * 100 : 0;
+  const cagrPct = computeAnnualizedIRR(depositFlows, nomFinalVal);
 
   let taxDetail = '-';
   if (afterTax) {
@@ -593,7 +607,7 @@ function runSimulation() {
   const n = slice.length;
   const endCpi = slice[n - 1].cpi || 100;
 
-  // 원금 기준선 시리즈 및 연평균 수익률
+  // 원금 기준선 시리즈 및 연평균 수익률 (원금 고정, 실질 모드 시 현금 실질가치 하향 보정)
   let cumNom = 0;
   let cumReal = 0;
   const principalFlows = [];
@@ -602,9 +616,10 @@ function runSimulation() {
     cumNom += monthlyAmt;
     cumReal += realDep;
     principalFlows.push(realPower ? realDep : monthlyAmt);
-    return realPower ? cumReal : cumNom;
+    return cumNom;
   });
-  const principalReturnPct = realPower ? ((cumNom - cumReal) / cumReal) * 100 : 0;
+  const cashRealFinalVal = (realPower && cumReal > 0) ? cumNom * (cumNom / cumReal) : cumNom;
+  const principalReturnPct = realPower ? ((cashRealFinalVal - cumNom) / cumNom) * 100 : 0;
   const principalCagr = realPower ? computeAnnualizedIRR(principalFlows, cumNom) : 0;
 
   // 선택 자산 시뮬레이션
@@ -629,9 +644,9 @@ function runSimulation() {
       <p class="text-[11px] text-slate-400 mt-0.5">물가 상승률: ${fmtPct(cpiDiffPct)}</p>
     </div>
     <div class="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-sm">
-      <p class="text-[11px] sm:text-xs text-slate-500">${realPower ? '실질 원금 (현재가치)' : '총 투입 원금'}</p>
-      <p class="text-base sm:text-lg font-bold text-slate-900 mt-1">${fmtKRW(realPower ? cumReal : cumNom)}</p>
-      <p class="text-[11px] text-slate-400 mt-0.5">${realPower ? '명목 원금: ' + fmtKRW(cumNom) : '월 ' + fmtKRW(monthlyAmt)}</p>
+      <p class="text-[11px] sm:text-xs text-slate-500">총 투입 원금</p>
+      <p class="text-base sm:text-lg font-bold text-slate-900 mt-1">${fmtKRW(cumNom)}</p>
+      <p class="text-[11px] text-slate-400 mt-0.5">${realPower ? '현금 실질가치: ' + fmtKRW(cashRealFinalVal) : '월 ' + fmtKRW(monthlyAmt)}</p>
     </div>
     <div class="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-sm">
       <p class="text-[11px] sm:text-xs text-slate-500">최고 성과 (${isAfterTax ? '세후' : '세전'})</p>
@@ -647,13 +662,13 @@ function runSimulation() {
 
   // 차트 안내
   document.getElementById('chartSubInfo').textContent =
-    `${isAfterTax ? '세후' : '세전'} 기준 · ${realPower ? '실질 구매력(종료 시점 물가 기준)' : '명목 금액'}`;
+    `${isAfterTax ? '세후' : '세전'} 기준 · ${realPower ? '실질 구매력(원금 고정 · 물가 보정)' : '명목 금액'}`;
 
   // 차트 그리기
   const labels = slice.map(r => r.ym);
   const datasets = [
     {
-      label: realPower ? '실질 원금 (물가반영)' : '투입 원금',
+      label: '투입 원금',
       data: principalSeries,
       borderColor: '#94a3b8',
       borderWidth: 2,
@@ -710,14 +725,14 @@ function runSimulation() {
 
   // 테이블 안내
   document.getElementById('tableNote').textContent = realPower
-    ? '실질 구매력 모드: 과거 투입 원금을 종료 시점 물가(CPI) 가치로 환산해 실질 수익률과 연평균 수익률을 산출했습니다.'
+    ? '실질 구매력 모드: 투입 원금은 고정하고, 적립 기간의 가중 물가 상승분을 반영해 최종 금액을 실질 구매력 기준으로 하향 보정했습니다.'
     : '명목 금액 기준: 실제 매월 투입된 원화 원금 대비 최종 평가액, 누적 수익률 및 연평균 수익률(IRR)입니다.';
 
   // 데스크톱 테이블 헤더
   const headerCols = [
     '항목',
-    realPower ? '실질 원금' : '투입 원금',
-    `최종 금액 (${isAfterTax ? '세후' : '세전'})`,
+    '투입 원금',
+    `${realPower ? '실질 최종 금액' : '최종 금액'} (${isAfterTax ? '세후' : '세전'})`,
     realPower ? '실질 수익률' : '최종 수익률',
     '연평균 수익률',
     ...(isAfterTax ? ['적용 세율 / 총 납부 세금'] : []),
@@ -735,8 +750,8 @@ function runSimulation() {
         <span class="w-2.5 h-2.5 rounded-full bg-slate-400 inline-block"></span>
         <span>원금 기준선</span>
       </td>
-      <td class="px-4 py-3 text-right whitespace-nowrap">${fmtKRW(realPower ? cumReal : cumNom)}</td>
       <td class="px-4 py-3 text-right whitespace-nowrap">${fmtKRW(cumNom)}</td>
+      <td class="px-4 py-3 text-right whitespace-nowrap">${fmtKRW(cashRealFinalVal)}</td>
       <td class="px-4 py-3 text-right whitespace-nowrap">${realPower ? fmtPct(principalReturnPct) : '0.0%'}</td>
       <td class="px-4 py-3 text-right whitespace-nowrap">${realPower ? fmtPct(principalCagr) : '0.0%'}</td>
       ${isAfterTax ? '<td class="px-4 py-3 text-right text-xs text-slate-400">비과세</td>' : ''}
@@ -753,10 +768,10 @@ function runSimulation() {
           <span class="w-2.5 h-2.5 rounded-full bg-slate-400 inline-block"></span>
           <span>원금 기준선</span>
         </div>
-        <span class="text-sm font-bold text-slate-700">${fmtKRW(cumNom)}</span>
+        <span class="text-sm font-bold text-slate-700">${fmtKRW(cashRealFinalVal)}</span>
       </div>
       <div class="grid grid-cols-3 gap-2 text-xs text-slate-500">
-        <div><span class="block text-[10px] text-slate-400">${realPower ? '실질 원금' : '투입 원금'}</span>${fmtKRWShort(realPower ? cumReal : cumNom)}원</div>
+        <div><span class="block text-[10px] text-slate-400">투입 원금</span>${fmtKRWShort(cumNom)}원</div>
         <div><span class="block text-[10px] text-slate-400">${realPower ? '실질 수익률' : '최종 수익률'}</span>${realPower ? fmtPct(principalReturnPct) : '0.0%'}</div>
         <div><span class="block text-[10px] text-slate-400">연평균 수익률</span>${realPower ? fmtPct(principalCagr) : '0.0%'}</div>
       </div>
@@ -768,7 +783,7 @@ function runSimulation() {
     `[적립식 투자 비교 결과]`,
     `기간: ${slice[0].ym} ~ ${slice[n-1].ym} (${n}개월 / ${(n/12).toFixed(1)}년) | 월 적립: ${fmtKRW(monthlyAmt)} | 적금: 연 ${savingsRate}%`,
     `기준: ${isAfterTax ? '세후(세금 적용)' : '세전'} / ${realPower ? '실질 구매력(CPI 물가 반영)' : '명목 금액'}`,
-    `원금: ${fmtKRW(realPower ? cumReal : cumNom)}${realPower ? ` (명목 ${fmtKRW(cumNom)})` : ''} | 물가상승률: ${fmtPct(cpiDiffPct)}`,
+    `원금: ${fmtKRW(cumNom)}${realPower ? ` (현금 실질가치 ${fmtKRW(cashRealFinalVal)})` : ''} | 물가상승률: ${fmtPct(cpiDiffPct)}`,
     `----------------------------------------`
   ];
 
@@ -776,7 +791,7 @@ function runSimulation() {
     const retColor = r.returnPct >= 0 ? 'text-rose-600' : 'text-blue-600';
     const cagrColor = r.cagrPct >= 0 ? 'text-rose-600' : 'text-blue-600';
     const isPartial = r.monthsInvested < n;
-    const baseP = realPower ? r.realPrincipalKrw : r.principalKrw;
+    const baseP = r.principalKrw;
     const partialBadge = isPartial ? `<span class="ml-1.5 px-1.5 py-0.5 text-[10px] font-normal bg-amber-100 text-amber-800 rounded">${r.firstInvestYm}~</span>` : '';
 
     tableHtml += `
@@ -815,7 +830,7 @@ function runSimulation() {
         </div>
         <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 text-xs">
           <div>
-            <span class="block text-[10px] text-slate-400">${realPower ? '실질 원금' : '투입 원금'}</span>
+            <span class="block text-[10px] text-slate-400">투입 원금</span>
             <span class="font-medium text-slate-700">${fmtKRWShort(baseP)}원</span>
           </div>
           <div>
