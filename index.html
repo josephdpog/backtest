@@ -202,7 +202,7 @@
         <p>※ QQQ(1999-03 이전)는 나스닥100 지수(^NDX) 수익률로 역산 연결되었으며, SGOV(2020-06 이전)는 주가 $100 고정 및 미국 3개월 국채 금리(^IRX) 월 분배금 재투자로 계산되었습니다.</p>
         <p>※ SCHD, QYLD, TSLA, NVDA, GOOGL, AMZN, 금, 은, 비트코인은 데이터가 존재하는 상장/제공 월부터 적립을 시작합니다. 배당(분배금)은 수령 시 즉시 재투자(세후 모드 시 15.4% 차감 후 재투자)되며, 해외주식 양도소득세는 최종 일괄 매도 기준 250만 원 공제 후 22%가 적용됩니다.</p>
         <p>※ 세후 기준: 적금 15.4%(매년 정산), 단순 달러 0%, 금 0%(KRX 금현물 기준), 은 15.4%(국내 은 ETF 기준), 비트코인 0%(과세 유예 기준). 연평균 수익률은 매월 적립 현금흐름 기준 연환산 내부수익률(IRR)입니다.</p>
-        <p>※ 실질 구매력(CPI 물가 반영) 모드에서는 투입 원금을 고정하고, 적립 기간의 가중 물가 보정 계수(명목 원금 ÷ 실질 원금)를 최종 금액과 차트에 적용해 '적립 시점 평균 구매력' 기준의 실질 가치와 인플레 차감액을 표시합니다.</p>
+        <p>※ 실질 구매력(CPI 물가 반영) 모드에서는 투입 원금을 고정하고, 적립 기간의 가중 물가 보정 계수(명목 원금 ÷ 실질 원금)를 최종 금액과 차트에 적용해 '적립 시점 평균 구매력' 기준의 실질 가치와 물가 손실액을 표시합니다.</p>
         <p>※ 환전 수수료는 0%로 가정합니다. 금융소득종합과세(연 이자·배당 2,000만 원 초과)는 개인별 소득 구간에 따라 다르므로 본 시뮬레이션에서 제외되었습니다.</p>
       </footer>
     </div>
@@ -840,7 +840,7 @@ function runSimulation() {
 
   // 테이블 안내
   document.getElementById('tableNote').textContent = realPower
-    ? '실질 구매력 모드: 투입 원금은 고정하고, 적립 기간의 가중 물가 상승분을 반영해 실질 최종 금액과 인플레 차감액을 표시합니다.'
+    ? '실질 구매력 모드: 투입 원금은 고정하고, 적립 기간의 가중 물가 상승분을 반영해 실질 최종 금액과 물가 손실액을 표시합니다.'
     : '명목 금액 기준: 실제 매월 투입된 원화 원금 대비 최종 평가액, 누적 수익률 및 연평균 수익률(IRR)입니다.';
 
   // 데스크톱 테이블 헤더
@@ -848,7 +848,7 @@ function runSimulation() {
     '항목',
     '투입 원금',
     `${realPower ? '실질 최종 금액' : '최종 금액'} (${isAfterTax ? '세후' : '세전'})`,
-    ...(realPower ? ['인플레 차감액'] : []),
+    ...(realPower ? ['물가 손실액'] : []),
     realPower ? '실질 수익률' : '최종 수익률',
     '연평균 수익률',
     ...(isAfterTax ? ['납부 세금'] : []),
@@ -859,7 +859,7 @@ function runSimulation() {
     .map((c, idx) => `<th class="px-3.5 py-3 font-semibold whitespace-nowrap ${idx >= 1 ? 'text-right' : ''}">${c}</th>`)
     .join('');
 
-  // 인플레 차감액 포맷 헬퍼
+  // 물가 손실액 포맷 헬퍼
   const fmtInfLoss = (loss) => {
     const r = Math.round(loss);
     if (r === 0) return '0원';
@@ -896,7 +896,7 @@ function runSimulation() {
       </div>
       <div class="grid grid-cols-3 gap-2 text-xs text-slate-500">
         <div><span class="block text-[10px] text-slate-400">투입 원금</span>${fmtKRWShort(cumNom)}원</div>
-        <div><span class="block text-[10px] text-slate-400">${realPower ? '인플레 차감액' : '최종 수익률'}</span>${realPower ? `<span class="text-amber-700 font-medium">${fmtInfLoss(cashInflationLoss)}</span>` : '0.0%'}</div>
+        <div><span class="block text-[10px] text-slate-400">${realPower ? '물가 손실액' : '최종 수익률'}</span>${realPower ? `<span class="text-amber-700 font-medium">${fmtInfLoss(cashInflationLoss)}</span>` : '0.0%'}</div>
         <div><span class="block text-[10px] text-slate-400">연평균 수익률</span>${realPower ? fmtPct(principalCagr) : '0.0%'}</div>
       </div>
     </div>
@@ -972,7 +972,7 @@ function runSimulation() {
         </div>
         ${realPower ? `
           <div class="text-[11px] bg-amber-50/70 rounded-lg px-2.5 py-1.5 flex items-center justify-between">
-            <span class="text-amber-800">인플레 차감액</span>
+            <span class="text-amber-800">물가 손실액</span>
             <span class="font-semibold text-amber-800">${fmtInfLoss(r.inflationLoss)}</span>
           </div>
         ` : ''}
